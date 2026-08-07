@@ -4,6 +4,7 @@ mod app_views;
 pub mod components;
 mod formatting;
 mod game_simulation;
+mod language;
 pub mod model;
 mod route;
 mod theme;

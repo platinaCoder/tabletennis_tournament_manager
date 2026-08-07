@@ -8,9 +8,10 @@ use tabletennis_tournament::results::{
 use tabletennis_tournament::scheduling::ScheduledMatch;
 
 use crate::formatting::match_format;
+use crate::language::{Language, Text, use_language};
 
 use super::SubmittedResult;
-use super::form_state::{FormEvaluation, GameInput, evaluate_rows};
+use super::form_state::{FormError, FormEvaluation, GameInput, evaluate_rows};
 
 #[derive(Properties, PartialEq)]
 pub struct MatchFormProps {
@@ -25,6 +26,7 @@ pub struct MatchFormProps {
 
 #[component]
 pub fn MatchForm(props: &MatchFormProps) -> Html {
+    let language = use_language();
     let rows = use_state(|| vec![GameInput::default(); props.match_format.maximum_games()]);
     let first_home_input = use_node_ref();
     {
@@ -39,13 +41,13 @@ pub fn MatchForm(props: &MatchFormProps) -> Html {
         });
     }
     if let Some(result) = &props.existing_result {
-        return completed_match(props, result);
+        return completed_match(props, result, language);
     }
     if props.scheduled_match.table_number().is_none() {
         return html! {
             <article class="match-card waiting-card">
-                {match_header(props)}
-                <p class="muted">{"Result entry opens automatically when a table becomes available."}</p>
+                {match_header(props, language)}
+                <p class="muted">{language.text(Text::ResultEntryWaitsForTable)}</p>
             </article>
         };
     }
@@ -69,10 +71,10 @@ pub fn MatchForm(props: &MatchFormProps) -> Html {
 
     html! {
         <article class="match-card">
-            {match_header(props)}
+            {match_header(props, language)}
             <form {onsubmit}>
                 <div class="game-grid game-grid-header">
-                    <span>{"Game"}</span><span>{"Home"}</span><span>{"Away"}</span>
+                    <span>{language.text(Text::Game)}</span><span>{language.text(Text::Home)}</span><span>{language.text(Text::Away)}</span>
                 </div>
                 {for rows.iter().enumerate().map(|(index, row)| {
                     let disabled = is_complete && index >= evaluation.games.len();
@@ -80,7 +82,7 @@ pub fn MatchForm(props: &MatchFormProps) -> Html {
                         <div class="game-grid" key={index}>
                             <span class="game-number">{index + 1}</span>
                             <input
-                                aria-label={format!("Game {} home points", index + 1)}
+                                aria-label={language.game_home_points_label(index + 1)}
                                 type="number"
                                 min="0"
                                 max="65535"
@@ -91,7 +93,7 @@ pub fn MatchForm(props: &MatchFormProps) -> Html {
                                 oninput={update_score(rows.clone(), index, true)}
                             />
                             <input
-                                aria-label={format!("Game {} away points", index + 1)}
+                                aria-label={language.game_away_points_label(index + 1)}
                                 type="number"
                                 min="0"
                                 max="65535"
@@ -103,8 +105,8 @@ pub fn MatchForm(props: &MatchFormProps) -> Html {
                     }
                 })}
                 <div class="match-progress">
-                    {progress_label(&evaluation, props)}
-                    <button class="primary compact" type="submit" disabled={!is_complete}>{"Save result"}</button>
+                    {progress_label(&evaluation, props, language)}
+                    <button class="primary compact" type="submit" disabled={!is_complete}>{language.text(Text::SaveResult)}</button>
                 </div>
             </form>
         </article>
@@ -130,9 +132,9 @@ fn update_score(
     })
 }
 
-fn progress_label(evaluation: &FormEvaluation, props: &MatchFormProps) -> Html {
+fn progress_label(evaluation: &FormEvaluation, props: &MatchFormProps, language: Language) -> Html {
     if let Some(error) = &evaluation.error {
-        return html! { <span class="error-text">{error}</span> };
+        return html! { <span class="error-text">{form_error_label(error, language)}</span> };
     }
     match evaluation.progress.map(MatchProgress::status) {
         Some(MatchProgressStatus::Complete { winner }) => {
@@ -140,17 +142,17 @@ fn progress_label(evaluation: &FormEvaluation, props: &MatchFormProps) -> Html {
                 MatchSide::Home => props.home.as_ref().map(|entrant| entrant.name.as_str()),
                 MatchSide::Away => props.away.as_ref().map(|entrant| entrant.name.as_str()),
             }
-            .unwrap_or("Unknown contestant");
+            .unwrap_or(language.text(Text::UnknownContestant));
             html! {
-                <strong class="success-text">{format!("Complete · {winner_name} wins")}</strong>
+                <strong class="success-text">{language.complete_winner(winner_name)}</strong>
             }
         }
-        Some(_) => html! { <span class="muted">{"Enter the remaining games."}</span> },
+        Some(_) => html! { <span class="muted">{language.text(Text::EnterRemainingGames)}</span> },
         None => Html::default(),
     }
 }
 
-fn completed_match(props: &MatchFormProps, result: &MatchResult) -> Html {
+fn completed_match(props: &MatchFormProps, result: &MatchResult, language: Language) -> Html {
     let scores = result
         .games()
         .iter()
@@ -164,45 +166,55 @@ fn completed_match(props: &MatchFormProps, result: &MatchResult) -> Html {
     } else {
         None
     }
-    .unwrap_or("Unknown contestant");
+    .unwrap_or(language.text(Text::UnknownContestant));
     html! {
         <article class="match-card complete-card">
-            {match_header(props)}
+            {match_header(props, language)}
             <div class="completed-score">
                 <strong>{format!("{}-{}", result.home_games_won().value(), result.away_games_won().value())}</strong>
                 <span>{scores}</span>
-                <small>{format!("Winner: {winner_name}")}</small>
+                <small>{language.winner(winner_name)}</small>
             </div>
         </article>
     }
 }
 
-fn match_header(props: &MatchFormProps) -> Html {
+fn match_header(props: &MatchFormProps, language: Language) -> Html {
     let table = props.scheduled_match.table_number().map_or_else(
-        || "Waiting for table".to_owned(),
-        |table| format!("Table {}", table.value()),
+        || language.text(Text::WaitingForTable).to_owned(),
+        |table| language.table(table.value()),
     );
     html! {
         <header class="match-header">
             <span class="table-badge">{table}</span>
             <div>
-                {entrant_line(props.home.as_ref(), "Home")}
-                {entrant_line(props.away.as_ref(), "Away")}
+                {entrant_line(props.home.as_ref(), language.text(Text::Home), language)}
+                {entrant_line(props.away.as_ref(), language.text(Text::Away), language)}
             </div>
-            <small>{match_format(props.match_format)}</small>
+            <small>{match_format(props.match_format, language)}</small>
         </header>
     }
 }
 
-fn entrant_line(entrant: Option<&TournamentEntrant>, side: &str) -> Html {
+fn entrant_line(entrant: Option<&TournamentEntrant>, side: &str, language: Language) -> Html {
     html! {
         <div class="match-entrant">
             <span>{side}</span>
-            <strong>{entrant.map_or("Unknown contestant", |entrant| entrant.name.as_str())}</strong>
+            <strong>{entrant.map_or(language.text(Text::UnknownContestant), |entrant| entrant.name.as_str())}</strong>
             <small>
-                {entrant.map_or("Unknown club", |entrant| entrant.club_name.as_str())}
-                {entrant.map_or_else(|| " · ELO unavailable".to_owned(), |entrant| format!(" · ELO {}", entrant.starting_elo.value()))}
+                {entrant.map_or(language.text(Text::UnknownClub), |entrant| entrant.club_name.as_str())}
+                {entrant.map_or_else(|| format!(" · {}", language.text(Text::EloUnavailable)), |entrant| format!(" · ELO {}", entrant.starting_elo.value()))}
             </small>
         </div>
+    }
+}
+
+fn form_error_label(error: &FormError, language: Language) -> String {
+    match error {
+        FormError::BlankRows => language.sequential_games_error().to_owned(),
+        FormError::WholeNumbers => language.whole_points_error().to_owned(),
+        FormError::GameNumberLimit => language.game_number_limit_error().to_owned(),
+        FormError::InvalidGameNumber => language.invalid_game_number_error().to_owned(),
+        FormError::MatchResult(error) => language.match_result_error(error),
     }
 }

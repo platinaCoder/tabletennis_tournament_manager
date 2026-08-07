@@ -6,6 +6,7 @@ use yew::prelude::*;
 use tabletennis_tournament::application::TournamentEntrant;
 
 use super::roster_state::{RosterRow, blank_row, initial_rows, simulated_rows};
+use crate::language::{Language, Text, use_language};
 use crate::model::RosterEntryCommand;
 
 #[derive(Clone, Copy)]
@@ -26,6 +27,7 @@ pub struct RosterFormProps {
 
 #[component]
 pub fn RosterForm(props: &RosterFormProps) -> Html {
+    let language = use_language();
     let rows = use_state(|| initial_rows(&props.entrants, props.initial_row_count));
     let club_suggestions = rows
         .iter()
@@ -46,7 +48,7 @@ pub fn RosterForm(props: &RosterFormProps) -> Html {
     };
     let simulate = {
         let rows = rows.clone();
-        Callback::from(move |_| rows.set(simulated_rows(rows.len())))
+        Callback::from(move |_| rows.set(simulated_rows(rows.len(), language)))
     };
 
     html! {
@@ -56,21 +58,21 @@ pub fn RosterForm(props: &RosterFormProps) -> Html {
             </datalist>
             <div class="roster-list">
                 <div class="roster-row roster-header" aria-hidden="true">
-                    <span>{"Contestant"}</span>
-                    <span>{"Club"}</span>
-                    <span>{"Starting ELO"}</span>
+                    <span>{language.text(Text::Contestant)}</span>
+                    <span>{language.text(Text::Club)}</span>
+                    <span>{language.text(Text::StartingElo)}</span>
                     <span></span>
                 </div>
-                {for rows.iter().enumerate().map(|(index, row)| roster_row(rows.clone(), row, index))}
+                {for rows.iter().enumerate().map(|(index, row)| roster_row(rows.clone(), row, index, language))}
             </div>
             <div class="roster-actions">
-                <button type="button" class="secondary" onclick={add_row}>{"+ Add contestant"}</button>
+                <button type="button" class="secondary" onclick={add_row}>{language.text(Text::AddContestant)}</button>
                 if props.allow_simulation {
                     <button type="button" class="test-action" onclick={simulate}>
-                        {"Fill with test contestants"}
+                        {language.text(Text::FillTestContestants)}
                     </button>
                 }
-                <span class="muted">{format!("{} contestants", rows.len())}</span>
+                <span class="muted">{language.contestant_count(rows.len())}</span>
                 <button type="submit" class="primary" disabled={rows.len() < 2}>
                     {props.submit_label.clone()}
                 </button>
@@ -79,7 +81,12 @@ pub fn RosterForm(props: &RosterFormProps) -> Html {
     }
 }
 
-fn roster_row(rows: UseStateHandle<Vec<RosterRow>>, row: &RosterRow, index: usize) -> Html {
+fn roster_row(
+    rows: UseStateHandle<Vec<RosterRow>>,
+    row: &RosterRow,
+    index: usize,
+    language: Language,
+) -> Html {
     let key = row.key;
     let remove = {
         let rows = rows.clone();
@@ -92,26 +99,26 @@ fn roster_row(rows: UseStateHandle<Vec<RosterRow>>, row: &RosterRow, index: usiz
     html! {
         <div class="roster-row" key={key}>
             <label>
-                <span class="mobile-label">{format!("Contestant {}", index + 1)}</span>
+                <span class="mobile-label">{language.contestant_number(index + 1)}</span>
                 <input
                     required=true
-                    placeholder={format!("Contestant {} name", index + 1)}
+                    placeholder={language.contestant_name_placeholder(index + 1)}
                     value={row.name.clone()}
                     oninput={update_field(rows.clone(), key, RosterField::Name)}
                 />
             </label>
             <label>
-                <span class="mobile-label">{"Club"}</span>
+                <span class="mobile-label">{language.text(Text::Club)}</span>
                 <input
                     required=true
                     list="club-suggestions"
-                    placeholder="Start typing a club"
+                    placeholder={language.club_placeholder()}
                     value={row.club_name.clone()}
                     oninput={update_field(rows.clone(), key, RosterField::Club)}
                 />
             </label>
             <label>
-                <span class="mobile-label">{"Starting ELO"}</span>
+                <span class="mobile-label">{language.text(Text::StartingElo)}</span>
                 <input
                     required=true
                     type="number"
@@ -123,10 +130,10 @@ fn roster_row(rows: UseStateHandle<Vec<RosterRow>>, row: &RosterRow, index: usiz
             <button
                 type="button"
                 class="danger-link"
-                aria-label={format!("Delete contestant {}", index + 1)}
+                aria-label={language.delete_contestant_label(index + 1)}
                 onclick={remove}
             >
-                {"Delete"}
+                {language.text(Text::Delete)}
             </button>
         </div>
     }

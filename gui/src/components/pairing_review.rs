@@ -8,6 +8,7 @@ use tabletennis_tournament::pairing::algorithms::blossom_v1::{
 };
 
 use crate::formatting::{compact_u64, duration, grouped_u64, relaxation_tier};
+use crate::language::{Language, Text, use_language};
 
 #[derive(Properties, PartialEq)]
 pub struct PairingReviewProps {
@@ -19,6 +20,7 @@ pub struct PairingReviewProps {
 
 #[component]
 pub fn PairingReview(props: &PairingReviewProps) -> Html {
+    let language = use_language();
     let entrants = props
         .entrants
         .iter()
@@ -33,12 +35,12 @@ pub fn PairingReview(props: &PairingReviewProps) -> Html {
             <section class="panel">
                 <div class="section-heading">
                     <div>
-                        <p class="eyebrow">{"Unpublished pairing preview"}</p>
-                        <h2>{format!("{} pairings", relaxation_tier(props.proposal.relaxation_tier))}</h2>
+                        <p class="eyebrow">{language.text(Text::UnpublishedPairingPreview)}</p>
+                        <h2>{language.pairing_heading(relaxation_tier(props.proposal.relaxation_tier, language))}</h2>
                     </div>
                     <div class="button-row">
-                        <button class="secondary" onclick={recalculate}>{"Recalculate"}</button>
-                        <button class="primary" onclick={publish}>{"Publish round"}</button>
+                        <button class="secondary" onclick={recalculate}>{language.text(Text::Recalculate)}</button>
+                        <button class="primary" onclick={publish}>{language.text(Text::PublishRound)}</button>
                     </div>
                 </div>
                 <div class="pairing-list">
@@ -48,47 +50,47 @@ pub fn PairingReview(props: &PairingReviewProps) -> Html {
                         html! {
                             <article class="pairing-card" key={format!("{}-{}", pairing.first_entrant_id.as_str(), pairing.second_entrant_id.as_str())}>
                                 <div class="contestants">
-                                    {entrant_label(first.copied())}
-                                    <span class="versus">{"vs"}</span>
-                                    {entrant_label(second.copied())}
+                                    {entrant_label(first.copied(), language)}
+                                    <span class="versus">{language.text(Text::Versus)}</span>
+                                    {entrant_label(second.copied(), language)}
                                 </div>
                                 <details>
-                                    <summary>{"Selection cost "}{cost_number(pairing.cost.total)}</summary>
-                                    {cost_breakdown(&pairing.cost)}
+                                    <summary>{language.text(Text::SelectionCost)}{" "}{cost_number(pairing.cost.total)}</summary>
+                                    {cost_breakdown(&pairing.cost, language)}
                                 </details>
                             </article>
                         }
                     })}
                     {props.proposal.bye.as_ref().map(|bye| html! {
                         <article class="pairing-card bye-card">
-                            <strong>{"Bye: "}{entrant_name(entrants.get(&bye.entrant_id).copied())}</strong>
-                            <span>{"Cost "}{cost_number(bye.cost.total)}</span>
+                            <strong>{language.text(Text::Bye)}{": "}{entrant_name(entrants.get(&bye.entrant_id).copied(), language)}</strong>
+                            <span>{language.text(Text::Cost)}{" "}{cost_number(bye.cost.total)}</span>
                         </article>
                     }).unwrap_or_default()}
                 </div>
             </section>
             <aside class="panel diagnostics-panel">
-                <p class="eyebrow">{"Developer diagnostics"}</p>
-                <h2>{"Pairing calculation"}</h2>
+                <p class="eyebrow">{language.text(Text::DeveloperDiagnostics)}</p>
+                <h2>{language.text(Text::PairingCalculation)}</h2>
                 <dl class="diagnostics-grid">
-                    <dt>{"Relaxation tier"}</dt><dd>{relaxation_tier(props.proposal.relaxation_tier)}</dd>
-                    <dt>{"Total cost"}</dt><dd>{cost_number(props.proposal.total_cost.value())}</dd>
-                    <dt>{"Candidate pairs"}</dt><dd>{diagnostics.candidate_pair_count}</dd>
-                    <dt>{"Eligible edges"}</dt><dd>{diagnostics.eligible_edge_count}</dd>
-                    <dt>{"Same-club rejected"}</dt><dd>{diagnostics.rejected_same_club_edges}</dd>
-                    <dt>{"Rematches rejected"}</dt><dd>{diagnostics.rejected_rematch_edges}</dd>
-                    <dt>{"Edge generation"}</dt><dd>{duration(diagnostics.edge_generation_duration)}</dd>
-                    <dt>{"Cost calculation"}</dt><dd>{duration(diagnostics.cost_calculation_duration)}</dd>
-                    <dt>{"Solver"}</dt><dd>{duration(diagnostics.solver_duration)}</dd>
-                    <dt>{"Validation"}</dt><dd>{duration(diagnostics.validation_duration)}</dd>
+                    <dt>{language.text(Text::RelaxationTier)}</dt><dd>{relaxation_tier(props.proposal.relaxation_tier, language)}</dd>
+                    <dt>{language.text(Text::TotalCost)}</dt><dd>{cost_number(props.proposal.total_cost.value())}</dd>
+                    <dt>{language.text(Text::CandidatePairs)}</dt><dd>{diagnostics.candidate_pair_count}</dd>
+                    <dt>{language.text(Text::EligibleEdges)}</dt><dd>{diagnostics.eligible_edge_count}</dd>
+                    <dt>{language.text(Text::SameClubRejected)}</dt><dd>{diagnostics.rejected_same_club_edges}</dd>
+                    <dt>{language.text(Text::RematchesRejected)}</dt><dd>{diagnostics.rejected_rematch_edges}</dd>
+                    <dt>{language.text(Text::EdgeGeneration)}</dt><dd>{duration(diagnostics.edge_generation_duration)}</dd>
+                    <dt>{language.text(Text::CostCalculation)}</dt><dd>{duration(diagnostics.cost_calculation_duration)}</dd>
+                    <dt>{language.text(Text::Solver)}</dt><dd>{duration(diagnostics.solver_duration)}</dd>
+                    <dt>{language.text(Text::Validation)}</dt><dd>{duration(diagnostics.validation_duration)}</dd>
                 </dl>
-                <h3>{"Warnings"}</h3>
+                <h3>{language.text(Text::Warnings)}</h3>
                 if props.proposal.warnings.is_empty() {
-                    <p class="success-text">{"No relaxation warnings."}</p>
+                    <p class="success-text">{language.text(Text::NoRelaxationWarnings)}</p>
                 } else {
                     <ul class="warning-list">
                         {for props.proposal.warnings.iter().map(|warning| html! {
-                            <li>{warning_label(warning, &entrants)}</li>
+                            <li>{warning_label(warning, &entrants, language)}</li>
                         })}
                     </ul>
                 }
@@ -97,27 +99,27 @@ pub fn PairingReview(props: &PairingReviewProps) -> Html {
     }
 }
 
-fn entrant_label(entrant: Option<&TournamentEntrant>) -> Html {
+fn entrant_label(entrant: Option<&TournamentEntrant>, language: Language) -> Html {
     html! {
         <div class="entrant-label">
-            <strong>{entrant_name(entrant)}</strong>
-            <span>{entrant.map_or("Unknown club", |entrant| entrant.club_name.as_str())}</span>
-            <small>{entrant.map_or_else(|| "ELO unavailable".to_owned(), |entrant| format!("ELO {}", entrant.starting_elo.value()))}</small>
+            <strong>{entrant_name(entrant, language)}</strong>
+            <span>{entrant.map_or(language.text(Text::UnknownClub), |entrant| entrant.club_name.as_str())}</span>
+            <small>{entrant.map_or_else(|| language.text(Text::EloUnavailable).to_owned(), |entrant| format!("ELO {}", entrant.starting_elo.value()))}</small>
         </div>
     }
 }
 
-fn cost_breakdown(cost: &PairingCostBreakdown) -> Html {
+fn cost_breakdown(cost: &PairingCostBreakdown, language: Language) -> Html {
     html! {
         <dl class="cost-grid">
-            <dt>{"Performance component"}</dt><dd>{cost_number(cost.performance_score_gap)}</dd>
-            <dt>{"Match-win component"}</dt><dd>{cost_number(cost.match_win_gap)}</dd>
-            <dt>{"Opponent component"}</dt><dd>{cost_number(cost.opponent_strength_gap)}</dd>
-            <dt>{"ELO component"}</dt><dd>{cost_number(cost.elo_gap)}</dd>
-            <dt>{"Same-club penalty"}</dt><dd>{cost_number(cost.same_club_penalty)}</dd>
-            <dt>{"Rematch penalty"}</dt><dd>{cost_number(cost.rematch_penalty)}</dd>
-            <dt>{"Bye penalty"}</dt><dd>{cost_number(cost.bye_penalty)}</dd>
-            <dt>{"Tie-break"}</dt><dd>{cost_number(cost.deterministic_tie_break)}</dd>
+            <dt>{language.text(Text::PerformanceComponent)}</dt><dd>{cost_number(cost.performance_score_gap)}</dd>
+            <dt>{language.text(Text::MatchWinComponent)}</dt><dd>{cost_number(cost.match_win_gap)}</dd>
+            <dt>{language.text(Text::OpponentComponent)}</dt><dd>{cost_number(cost.opponent_strength_gap)}</dd>
+            <dt>{language.text(Text::EloComponent)}</dt><dd>{cost_number(cost.elo_gap)}</dd>
+            <dt>{language.text(Text::SameClubPenalty)}</dt><dd>{cost_number(cost.same_club_penalty)}</dd>
+            <dt>{language.text(Text::RematchPenalty)}</dt><dd>{cost_number(cost.rematch_penalty)}</dd>
+            <dt>{language.text(Text::ByePenalty)}</dt><dd>{cost_number(cost.bye_penalty)}</dd>
+            <dt>{language.text(Text::TieBreak)}</dt><dd>{cost_number(cost.deterministic_tie_break)}</dd>
         </dl>
     }
 }
@@ -132,37 +134,30 @@ fn cost_number(value: u64) -> Html {
     }
 }
 
-fn entrant_name(entrant: Option<&TournamentEntrant>) -> &str {
-    entrant.map_or("Unknown contestant", |entrant| entrant.name.as_str())
+fn entrant_name(entrant: Option<&TournamentEntrant>, language: Language) -> &str {
+    entrant.map_or(language.text(Text::UnknownContestant), |entrant| {
+        entrant.name.as_str()
+    })
 }
 
 fn warning_label(
     warning: &PairingWarning,
     entrants: &HashMap<&tabletennis_tournament::identity::EntrantId, &TournamentEntrant>,
+    language: Language,
 ) -> String {
-    let name = |id| entrant_name(entrants.get(id).copied());
+    let name = |id| entrant_name(entrants.get(id).copied(), language);
     match warning {
         PairingWarning::SameClubPairingRequired {
             first_entrant_id,
             second_entrant_id,
-        } => format!(
-            "Same-club pairing required: {} vs {}",
-            name(first_entrant_id),
-            name(second_entrant_id)
-        ),
+        } => language.same_club_warning(name(first_entrant_id), name(second_entrant_id)),
         PairingWarning::RematchRequired {
             first_entrant_id,
             second_entrant_id,
-        } => format!(
-            "Rematch required: {} vs {}",
-            name(first_entrant_id),
-            name(second_entrant_id)
-        ),
-        PairingWarning::ByeAssigned { entrant_id } => {
-            format!("Bye assigned to {}", name(entrant_id))
-        }
+        } => language.rematch_warning(name(first_entrant_id), name(second_entrant_id)),
+        PairingWarning::ByeAssigned { entrant_id } => language.bye_warning(name(entrant_id)),
         PairingWarning::RelaxedPairingRequired { tier } => {
-            format!("{} was required", relaxation_tier(*tier))
+            language.relaxation_warning(relaxation_tier(*tier, language))
         }
     }
 }

@@ -9,6 +9,8 @@ use tabletennis_tournament::application::{ActiveRound, TournamentEntrant};
 use tabletennis_tournament::identity::MatchId;
 use tabletennis_tournament::results::{GameScore, MatchFormat};
 
+use crate::language::{Text, use_language};
+
 use match_form::MatchForm;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -30,6 +32,7 @@ pub struct ResultEntryProps {
 
 #[component]
 pub fn ResultEntry(props: &ResultEntryProps) -> Html {
+    let language = use_language();
     let entrants = props
         .entrants
         .iter()
@@ -67,26 +70,26 @@ pub fn ResultEntry(props: &ResultEntryProps) -> Html {
         <section class="panel result-entry-panel">
             <div class="section-heading">
                 <div>
-                    <p class="eyebrow">{format!("Round {} · result entry", props.round.round_number.value())}</p>
-                    <h2>{format!("{} of {} matches complete", results.len(), props.round.scheduled_matches.len())}</h2>
+                    <p class="eyebrow">{language.result_entry_round(props.round.round_number.value())}</p>
+                    <h2>{language.matches_complete(results.len(), props.round.scheduled_matches.len())}</h2>
                 </div>
                 <div class="button-row">
                     if props.allow_simulation {
                         <button class="test-action" disabled={complete} onclick={on_simulate}>
-                            {"Simulate remaining games"}
+                            {language.text(Text::SimulateRemainingGames)}
                         </button>
                     }
                     <button class="primary" disabled={!complete} onclick={on_complete}>
-                        {"Complete round"}
+                        {language.text(Text::CompleteRound)}
                     </button>
                 </div>
             </div>
-            <p class="keyboard-hint">{"Keyboard: home score → Tab → away score → Tab → next game. Press Enter to save once the match is complete."}</p>
+            <p class="keyboard-hint">{language.keyboard_hint()}</p>
             {props.round.bye.as_ref().map(|bye| {
                 let name = entrants
                     .get(bye)
-                    .map_or("Unknown contestant", |entrant| entrant.name.as_str());
-                html! { <p class="bye-notice"><strong>{name}</strong>{" has the bye this round."}</p> }
+                    .map_or(language.text(Text::UnknownContestant), |entrant| entrant.name.as_str());
+                html! { <p class="bye-notice">{language.bye_this_round(name)}</p> }
             }).unwrap_or_default()}
             <div class="result-grid">
                 {for props.round.scheduled_matches.iter().map(|scheduled| {

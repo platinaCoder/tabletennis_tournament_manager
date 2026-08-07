@@ -5,6 +5,7 @@ use tabletennis_tournament::tournament::TournamentState;
 
 use crate::components::{Registration, RosterEditor, SubmittedResult, TournamentSetup};
 use crate::formatting::match_format;
+use crate::language::{Language, Text};
 use crate::model::{CreateTournamentCommand, RosterEntryCommand};
 
 pub struct App {
@@ -15,6 +16,7 @@ pub struct App {
     pub(crate) next_club_number: u64,
     roster_open: bool,
     dark_mode: bool,
+    pub(crate) language: Language,
     pub(crate) development_tools_enabled: bool,
 }
 
@@ -24,6 +26,7 @@ pub enum Msg {
     SaveRoster(Vec<RosterEntryCommand>),
     ToggleRoster,
     ToggleDarkMode,
+    ToggleLanguage,
     CalculatePairings,
     PublishPairings,
     SubmitResult(SubmittedResult),
@@ -38,6 +41,8 @@ impl Component for App {
 
     fn create(_context: &Context<Self>) -> Self {
         let development_tools_enabled = crate::route::current_route().development_tools_enabled();
+        let language = crate::language::load_language();
+        crate::language::apply_to_document(language);
         Self {
             application: None,
             error: None,
@@ -46,6 +51,7 @@ impl Component for App {
             next_club_number: 1,
             roster_open: false,
             dark_mode: crate::theme::load_dark_mode(),
+            language,
             development_tools_enabled,
         }
     }
@@ -62,6 +68,13 @@ impl Component for App {
         if matches!(message, Msg::ToggleDarkMode) {
             self.dark_mode = !self.dark_mode;
             crate::theme::store_dark_mode(self.dark_mode);
+            return true;
+        }
+        if matches!(message, Msg::ToggleLanguage) {
+            self.language = self.language.toggled();
+            crate::language::store_language(self.language);
+            crate::language::apply_to_document(self.language);
+            self.error = None;
             return true;
         }
         match self.handle(message) {
@@ -95,21 +108,24 @@ impl Component for App {
             Some(application) => self.started_view(context, application),
         };
 
+        let language = self.language;
         html! {
+            <ContextProvider<Language> context={language}>
             <div class={classes!("theme-root", self.dark_mode.then_some("dark-mode"))}>
             <main class="app-shell">
                 <header class="app-header">
                     <div>
-                        <p class="eyebrow">{"Local tournament control"}</p>
-                        <h1>{"Table-tennis tournament"}</h1>
+                        <p class="eyebrow">{language.text(Text::LocalTournamentControl)}</p>
+                        <h1>{language.text(Text::TableTennisTournament)}</h1>
                         if self.development_tools_enabled {
-                            <span class="developer-mode-label">{"Developer simulation mode"}</span>
+                            <span class="developer-mode-label">{language.text(Text::DeveloperSimulationMode)}</span>
                         }
                     </div>
                     <div class="header-actions">
-                        {self.application.as_ref().map(tournament_status).unwrap_or_default()}
+                        {self.application.as_ref().map(|application| tournament_status(application, language)).unwrap_or_default()}
                         {self.roster_button(context)}
                         {self.theme_button(context)}
+                        {self.language_button(context)}
                     </div>
                 </header>
                 {self.error.as_ref().map(|error| {
@@ -117,7 +133,7 @@ impl Component for App {
                     html! {
                         <div class="error-banner" role="alert">
                             <span>{error}</span>
-                            <button aria-label="Dismiss error" onclick={dismiss}>{"×"}</button>
+                            <button aria-label={language.text(Text::DismissError)} onclick={dismiss}>{"×"}</button>
                         </div>
                     }
                 }).unwrap_or_default()}
@@ -125,6 +141,7 @@ impl Component for App {
                 {content}
             </main>
             </div>
+            </ContextProvider<Language>>
         }
     }
 }
@@ -138,7 +155,16 @@ impl App {
                 aria-pressed={self.dark_mode.to_string()}
                 onclick={toggle}
             >
-                {if self.dark_mode { "Light mode" } else { "Dark mode" }}
+                {if self.dark_mode { self.language.text(Text::LightMode) } else { self.language.text(Text::DarkMode) }}
+            </button>
+        }
+    }
+
+    fn language_button(&self, context: &Context<Self>) -> Html {
+        let toggle = context.link().callback(|_| Msg::ToggleLanguage);
+        html! {
+            <button class="secondary compact" onclick={toggle}>
+                {self.language.toggle_label()}
             </button>
         }
     }
@@ -153,7 +179,7 @@ impl App {
         let toggle = context.link().callback(|_| Msg::ToggleRoster);
         html! {
             <button class="secondary compact" onclick={toggle}>
-                {if self.roster_open { "Close roster" } else { "Manage contestants" }}
+                {if self.roster_open { self.language.text(Text::CloseRoster) } else { self.language.text(Text::ManageContestants) }}
             </button>
         }
     }
@@ -175,11 +201,15 @@ impl App {
     }
 }
 
-fn tournament_status(application: &TournamentApplication) -> Html {
+fn tournament_status(application: &TournamentApplication, language: Language) -> Html {
     html! {
         <div class="tournament-status">
             <strong>{application.tournament().id().as_str()}</strong>
-            <span>{format!("{} · {} tables · {} rounds", match_format(application.tournament().match_format()), application.tournament().table_count().value(), application.tournament().maximum_round_count().value())}</span>
+            <span>{language.tournament_status(
+                match_format(application.tournament().match_format(), language),
+                application.tournament().table_count().value(),
+                application.tournament().maximum_round_count().value(),
+            )}</span>
         </div>
     }
 }

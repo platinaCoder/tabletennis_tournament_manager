@@ -31,7 +31,7 @@ fn existing_roster_keeps_stable_ids_hidden_in_form_state() {
 
 #[test]
 fn simulated_roster_spans_the_visible_elo_test_range() {
-    let rows = simulated_rows(16);
+    let rows = simulated_rows(16, crate::language::Language::English);
 
     assert_eq!(rows.len(), 16);
     assert_eq!(rows.first().unwrap().elo, "900");

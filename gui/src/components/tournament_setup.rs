@@ -3,6 +3,7 @@ use yew::prelude::*;
 
 use tabletennis_tournament::results::MatchFormat;
 
+use crate::language::{Text, use_language};
 use crate::model::CreateTournamentCommand;
 
 #[derive(Properties, PartialEq)]
@@ -12,6 +13,7 @@ pub struct TournamentSetupProps {
 
 #[component]
 pub fn TournamentSetup(props: &TournamentSetupProps) -> Html {
+    let language = use_language();
     let tournament_id = use_state(|| "local-tournament".to_owned());
     let table_count = use_state(|| "8".to_owned());
     let contestant_count = use_state(|| "16".to_owned());
@@ -54,36 +56,42 @@ pub fn TournamentSetup(props: &TournamentSetupProps) -> Html {
 
     html! {
         <section class="panel setup-panel">
-            <p class="eyebrow">{"Tournament setup"}</p>
-            <h2>{"Create a tournament"}</h2>
+            <p class="eyebrow">{language.text(Text::TournamentSetup)}</p>
+            <h2>{language.text(Text::CreateTournament)}</h2>
             <p class="muted">
-                {"The match format, table count, and maximum rounds become fixed when play starts."}
+                {language.setup_explanation()}
             </p>
             <form {onsubmit} class="form-grid">
                 <label>
-                    <span>{"Tournament identifier"}</span>
+                    <span>{language.text(Text::TournamentIdentifier)}</span>
                     <input required=true value={(*tournament_id).clone()} oninput={on_id} />
                 </label>
                 <label>
-                    <span>{"Match format"}</span>
-                    <select onchange={on_format}>
-                        <option value="best_of_five" selected=true>{"Best of five"}</option>
-                        <option value="best_of_three">{"Best of three"}</option>
+                    <span>{language.text(Text::MatchFormat)}</span>
+                    <select
+                        value={match *match_format {
+                            MatchFormat::BestOfThree => "best_of_three",
+                            MatchFormat::BestOfFive => "best_of_five",
+                        }}
+                        onchange={on_format}
+                    >
+                        <option value="best_of_five">{crate::formatting::match_format(MatchFormat::BestOfFive, language)}</option>
+                        <option value="best_of_three">{crate::formatting::match_format(MatchFormat::BestOfThree, language)}</option>
                     </select>
                 </label>
                 <label>
-                    <span>{"Available tables"}</span>
+                    <span>{language.text(Text::AvailableTables)}</span>
                     <input required=true type="number" min="1" value={(*table_count).clone()} oninput={on_tables} />
                 </label>
                 <label>
-                    <span>{"Contestant count"}</span>
+                    <span>{language.text(Text::ContestantCount)}</span>
                     <input required=true type="number" min="2" max="64" value={(*contestant_count).clone()} oninput={on_contestants} />
                 </label>
                 <label>
-                    <span>{"Maximum rounds"}</span>
+                    <span>{language.text(Text::MaximumRounds)}</span>
                     <input required=true type="number" min="1" max="65535" value={(*maximum_round_count).clone()} oninput={on_rounds} />
                 </label>
-                <button class="primary" type="submit">{"Create tournament"}</button>
+                <button class="primary" type="submit">{language.text(Text::CreateTournament)}</button>
             </form>
         </section>
     }

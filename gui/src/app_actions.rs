@@ -39,7 +39,7 @@ impl App {
                 .map_err(error),
             Msg::SimulateRemainingResults => {
                 if !self.development_tools_enabled {
-                    return Err("Simulation tools are only available at /dev.".to_owned());
+                    return Err(self.language.simulation_route_error().to_owned());
                 }
                 self.simulate_remaining_results()?;
                 Ok(RosterAction::None)
@@ -49,7 +49,9 @@ impl App {
                 .complete_round()
                 .map(|_| RosterAction::None)
                 .map_err(error),
-            Msg::DismissError | Msg::ToggleRoster | Msg::ToggleDarkMode => Ok(RosterAction::None),
+            Msg::DismissError | Msg::ToggleRoster | Msg::ToggleDarkMode | Msg::ToggleLanguage => {
+                Ok(RosterAction::None)
+            }
         }
     }
 
@@ -58,10 +60,10 @@ impl App {
         command: CreateTournamentCommand,
     ) -> Result<RosterAction, String> {
         if command.tournament_id.trim().is_empty() {
-            return Err("Tournament identifier is required.".to_owned());
+            return Err(self.language.tournament_identifier_error().to_owned());
         }
         if !(2..=64).contains(&command.contestant_count) {
-            return Err("Contestant count must be between 2 and 64.".to_owned());
+            return Err(self.language.contestant_range_error().to_owned());
         }
         let table_count = TableCount::try_from(command.table_count).map_err(error)?;
         let maximum_round_count =
@@ -80,7 +82,7 @@ impl App {
         let known_entrants = self
             .application
             .as_ref()
-            .ok_or_else(|| "Create a tournament first.".to_owned())?
+            .ok_or_else(|| self.language.create_tournament_first_error().to_owned())?
             .entrants()
             .to_vec();
         let mut used_ids = HashSet::with_capacity(commands.len());
@@ -88,14 +90,14 @@ impl App {
 
         for command in commands {
             if command.name.trim().is_empty() || command.club_name.trim().is_empty() {
-                return Err("Every contestant needs a name and club.".to_owned());
+                return Err(self.language.roster_fields_error().to_owned());
             }
             let entrant_id = match command.entrant_id {
                 Some(id) => EntrantId::new(id),
                 None => self.next_entrant_id(&known_entrants, &used_ids),
             };
             if !used_ids.insert(entrant_id.clone()) {
-                return Err("The roster contains the same contestant twice.".to_owned());
+                return Err(self.language.duplicate_roster_error().to_owned());
             }
             let club_id =
                 self.club_id_for_name(command.club_name.trim(), &known_entrants, &replacements);
@@ -152,7 +154,7 @@ impl App {
     fn application_mut(&mut self) -> Result<&mut TournamentApplication, String> {
         self.application
             .as_mut()
-            .ok_or_else(|| "Create a tournament first.".to_owned())
+            .ok_or_else(|| self.language.create_tournament_first_error().to_owned())
     }
 }
 

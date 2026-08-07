@@ -7,6 +7,7 @@ use tabletennis_tournament::identity::EntrantId;
 use tabletennis_tournament::results::MatchResult;
 
 use crate::formatting::relaxation_tier;
+use crate::language::{Language, Text, use_language};
 
 use super::standings::Standings;
 
@@ -20,6 +21,7 @@ pub struct TournamentReportProps {
 
 #[component]
 pub fn TournamentReport(props: &TournamentReportProps) -> Html {
+    let language = use_language();
     let show_matches = use_state(|| false);
     let toggle_matches = {
         let show_matches = show_matches.clone();
@@ -42,17 +44,17 @@ pub fn TournamentReport(props: &TournamentReportProps) -> Html {
             <section class="panel final-report">
                 <div class="section-heading">
                     <div>
-                        <p class="eyebrow">{"Tournament complete"}</p>
-                        <h2>{"Final standings"}</h2>
+                        <p class="eyebrow">{language.text(Text::TournamentComplete)}</p>
+                        <h2>{language.text(Text::FinalStandings)}</h2>
                     </div>
                     <button class="secondary" onclick={toggle_matches}>
-                        {if *show_matches { "Hide match results" } else { "Show match results" }}
+                        {if *show_matches { language.text(Text::HideMatchResults) } else { language.text(Text::ShowMatchResults) }}
                     </button>
                 </div>
                 <div class="summary-strip">
-                    <span>{format!("{} rounds", props.rounds.len())}</span>
-                    <span>{format!("{match_count} matches")}</span>
-                    <span>{format!("{game_count} games")}</span>
+                    <span>{language.round_count(props.rounds.len())}</span>
+                    <span>{language.match_count(match_count)}</span>
+                    <span>{language.game_count(game_count)}</span>
                 </div>
                 <Standings
                     standings={props.standings.clone()}
@@ -62,16 +64,16 @@ pub fn TournamentReport(props: &TournamentReportProps) -> Html {
             </section>
             if *show_matches {
                 <section class="panel match-report">
-                    <p class="eyebrow">{"Complete tournament record"}</p>
-                    <h2>{"Match results by round"}</h2>
-                    {match_results(props)}
+                    <p class="eyebrow">{language.text(Text::CompleteTournamentRecord)}</p>
+                    <h2>{language.text(Text::MatchResultsByRound)}</h2>
+                    {match_results(props, language)}
                 </section>
             }
         </div>
     }
 }
 
-fn match_results(props: &TournamentReportProps) -> Html {
+fn match_results(props: &TournamentReportProps, language: Language) -> Html {
     let entrants = props
         .entrants
         .iter()
@@ -79,12 +81,16 @@ fn match_results(props: &TournamentReportProps) -> Html {
         .collect::<HashMap<_, _>>();
     html! {
         <div class="report-rounds">
-            {for props.rounds.iter().map(|round| round_results(round, &entrants))}
+            {for props.rounds.iter().map(|round| round_results(round, &entrants, language))}
         </div>
     }
 }
 
-fn round_results(round: &CompletedRound, entrants: &HashMap<&EntrantId, &str>) -> Html {
+fn round_results(
+    round: &CompletedRound,
+    entrants: &HashMap<&EntrantId, &str>,
+    language: Language,
+) -> Html {
     let results = round
         .results
         .iter()
@@ -93,30 +99,30 @@ fn round_results(round: &CompletedRound, entrants: &HashMap<&EntrantId, &str>) -
     html! {
         <article class="report-round">
             <header>
-                <h3>{format!("Round {}", round.round_number.value())}</h3>
-                <span>{relaxation_tier(round.proposal.relaxation_tier)}</span>
+                <h3>{language.round(round.round_number.value())}</h3>
+                <span>{relaxation_tier(round.proposal.relaxation_tier, language)}</span>
             </header>
             <div class="report-match-list">
                 {for round.scheduled_matches.iter().map(|scheduled| {
                     let result = results.get(&scheduled.match_id).copied();
-                    let home = contestant_name(entrants, &scheduled.home_entrant_id);
-                    let away = contestant_name(entrants, &scheduled.away_entrant_id);
+                    let home = contestant_name(entrants, &scheduled.home_entrant_id, language);
+                    let away = contestant_name(entrants, &scheduled.away_entrant_id, language);
                     let table = scheduled.table_number().map_or_else(
-                        || "Unassigned".to_owned(),
-                        |table| format!("Table {}", table.value()),
+                        || language.text(Text::Unassigned).to_owned(),
+                        |table| language.table(table.value()),
                     );
                     html! {
                         <div class="report-match" key={scheduled.match_id.as_str().to_owned()}>
                             <span class="table-badge">{table}</span>
-                            <strong>{home}{" vs "}{away}</strong>
-                            {result.map(result_score).unwrap_or_else(|| html! { <span>{"No result"}</span> })}
+                            <strong>{home}{format!(" {} ", language.text(Text::Versus))}{away}</strong>
+                            {result.map(result_score).unwrap_or_else(|| html! { <span>{language.text(Text::NoResult)}</span> })}
                         </div>
                     }
                 })}
                 {round.bye.as_ref().map(|bye| html! {
                     <div class="report-match report-bye">
-                        <span class="table-badge">{"Bye"}</span>
-                        <strong>{contestant_name(entrants, bye)}</strong>
+                        <span class="table-badge">{language.text(Text::Bye)}</span>
+                        <strong>{contestant_name(entrants, bye, language)}</strong>
                     </div>
                 }).unwrap_or_default()}
             </div>
@@ -139,6 +145,13 @@ fn result_score(result: &MatchResult) -> Html {
     }
 }
 
-fn contestant_name<'a>(entrants: &'a HashMap<&EntrantId, &'a str>, id: &EntrantId) -> &'a str {
-    entrants.get(id).copied().unwrap_or("Unknown contestant")
+fn contestant_name<'a>(
+    entrants: &'a HashMap<&EntrantId, &'a str>,
+    id: &EntrantId,
+    language: Language,
+) -> &'a str {
+    entrants
+        .get(id)
+        .copied()
+        .unwrap_or_else(|| language.text(Text::UnknownContestant))
 }

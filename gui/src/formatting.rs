@@ -3,6 +3,8 @@ use std::time::Duration;
 use tabletennis_tournament::pairing::algorithms::blossom_v1::RelaxationTier;
 use tabletennis_tournament::results::MatchFormat;
 
+use crate::language::Language;
+
 pub(crate) fn compact_u64(value: u64) -> String {
     match value {
         1_000_000_000.. => format_scaled(value, 1_000_000_000, "B"),
@@ -34,18 +36,23 @@ pub(crate) fn duration(duration: Duration) -> String {
     }
 }
 
-pub(crate) const fn match_format(format: MatchFormat) -> &'static str {
-    match format {
-        MatchFormat::BestOfThree => "Best of three",
-        MatchFormat::BestOfFive => "Best of five",
+pub(crate) const fn match_format(format: MatchFormat, language: Language) -> &'static str {
+    match (format, language) {
+        (MatchFormat::BestOfThree, Language::English) => "Best of three",
+        (MatchFormat::BestOfFive, Language::English) => "Best of five",
+        (MatchFormat::BestOfThree, Language::Dutch) => "Best-of-three",
+        (MatchFormat::BestOfFive, Language::Dutch) => "Best-of-five",
     }
 }
 
-pub(crate) const fn relaxation_tier(tier: RelaxationTier) -> &'static str {
-    match tier {
-        RelaxationTier::Strict => "Strict",
-        RelaxationTier::SameClubAllowed => "Same-club relaxation",
-        RelaxationTier::RematchesAllowed => "Rematch relaxation",
+pub(crate) const fn relaxation_tier(tier: RelaxationTier, language: Language) -> &'static str {
+    match (tier, language) {
+        (RelaxationTier::Strict, Language::English) => "Strict",
+        (RelaxationTier::SameClubAllowed, Language::English) => "Same-club relaxation",
+        (RelaxationTier::RematchesAllowed, Language::English) => "Rematch relaxation",
+        (RelaxationTier::Strict, Language::Dutch) => "Strikt",
+        (RelaxationTier::SameClubAllowed, Language::Dutch) => "Versoepeling: dezelfde vereniging",
+        (RelaxationTier::RematchesAllowed, Language::Dutch) => "Versoepeling: herkansingen",
     }
 }
 

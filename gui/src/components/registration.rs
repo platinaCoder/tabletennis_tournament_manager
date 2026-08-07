@@ -3,6 +3,7 @@ use yew::prelude::*;
 use tabletennis_tournament::results::MatchFormat;
 
 use crate::formatting::match_format;
+use crate::language::{Text, use_language};
 use crate::model::RosterEntryCommand;
 
 use super::roster_form::RosterForm;
@@ -19,27 +20,28 @@ pub struct RegistrationProps {
 
 #[component]
 pub fn Registration(props: &RegistrationProps) -> Html {
+    let language = use_language();
     html! {
         <section class="panel roster-panel">
             <div class="section-heading">
                 <div>
-                    <p class="eyebrow">{"Registration"}</p>
-                    <h2>{"Enter the contestant roster"}</h2>
+                    <p class="eyebrow">{language.text(Text::Registration)}</p>
+                    <h2>{language.text(Text::EnterRoster)}</h2>
                 </div>
                 <div class="summary-strip">
-                    <span>{match_format(props.match_format)}</span>
-                    <span>{format!("{} tables", props.table_count)}</span>
-                    <span>{format!("{} rounds", props.maximum_round_count)}</span>
+                    <span>{match_format(props.match_format, language)}</span>
+                    <span>{language.table_count(props.table_count)}</span>
+                    <span>{language.round_count(usize::from(props.maximum_round_count))}</span>
                 </div>
             </div>
             <p class="muted">
-                {"Names, clubs, and starting ELOs can still be edited after the tournament starts."}
+                {language.roster_edit_explanation()}
             </p>
             <RosterForm
                 entrants={Vec::new()}
                 initial_row_count={props.contestant_count}
                 allow_simulation={props.allow_simulation}
-                submit_label={"Start tournament"}
+                submit_label={language.text(Text::StartTournament)}
                 on_submit={props.on_start.clone()}
             />
         </section>

@@ -6,13 +6,14 @@ use crate::app::App;
 
 impl App {
     pub(crate) fn simulate_remaining_results(&mut self) -> Result<(), String> {
+        let language = self.language;
         let application = self
             .application
             .as_ref()
-            .ok_or_else(|| "Create a tournament first.".to_owned())?;
+            .ok_or_else(|| language.create_tournament_first_error().to_owned())?;
         let round = application
             .active_round()
-            .ok_or_else(|| "There is no active round to simulate.".to_owned())?
+            .ok_or_else(|| language.no_active_round_error().to_owned())?
             .clone();
         let match_format = application.tournament().match_format();
         let elo_by_entrant = application
@@ -34,11 +35,11 @@ impl App {
             let home_elo = elo_by_entrant
                 .get(&scheduled.home_entrant_id)
                 .copied()
-                .ok_or_else(unknown_contestant)?;
+                .ok_or_else(|| unknown_contestant(language))?;
             let away_elo = elo_by_entrant
                 .get(&scheduled.away_entrant_id)
                 .copied()
-                .ok_or_else(unknown_contestant)?;
+                .ok_or_else(|| unknown_contestant(language))?;
             let games = simulate_match_games(
                 match_format,
                 home_elo,
@@ -52,7 +53,7 @@ impl App {
         let application = self
             .application
             .as_mut()
-            .ok_or_else(|| "Create a tournament first.".to_owned())?;
+            .ok_or_else(|| language.create_tournament_first_error().to_owned())?;
         for (match_id, games) in simulated {
             application
                 .enter_match_result(&match_id, games)
@@ -70,8 +71,8 @@ fn stable_seed(value: &str) -> u64 {
         })
 }
 
-fn unknown_contestant() -> String {
-    "A simulated match references an unknown contestant.".to_owned()
+fn unknown_contestant(language: crate::language::Language) -> String {
+    language.unknown_simulated_contestant_error().to_owned()
 }
 
 fn error(error: impl std::fmt::Display) -> String {

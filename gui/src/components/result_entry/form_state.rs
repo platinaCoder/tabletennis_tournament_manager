@@ -1,5 +1,5 @@
 use tabletennis_tournament::results::{
-    GameScore, MatchFormat, MatchProgress, evaluate_match_progress,
+    GameScore, MatchFormat, MatchProgress, MatchResultError, evaluate_match_progress,
 };
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -11,7 +11,16 @@ pub(super) struct GameInput {
 pub(super) struct FormEvaluation {
     pub games: Vec<GameScore>,
     pub progress: Option<MatchProgress>,
-    pub error: Option<String>,
+    pub error: Option<FormError>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(super) enum FormError {
+    BlankRows,
+    WholeNumbers,
+    GameNumberLimit,
+    InvalidGameNumber,
+    MatchResult(MatchResultError),
 }
 
 pub(super) fn evaluate_rows(match_format: MatchFormat, rows: &[GameInput]) -> FormEvaluation {
@@ -23,16 +32,16 @@ pub(super) fn evaluate_rows(match_format: MatchFormat, rows: &[GameInput]) -> Fo
             continue;
         }
         if found_empty {
-            return form_error(games, "Enter games sequentially without blank rows.");
+            return form_error(games, FormError::BlankRows);
         }
         let (Ok(home), Ok(away)) = (row.home.parse::<u16>(), row.away.parse::<u16>()) else {
-            return form_error(games, "Enter both point totals using whole numbers.");
+            return form_error(games, FormError::WholeNumbers);
         };
         let Ok(game_number) = u8::try_from(index + 1) else {
-            return form_error(games, "Game number exceeds the supported limit.");
+            return form_error(games, FormError::GameNumberLimit);
         };
         let Ok(game) = GameScore::new(game_number, home, away) else {
-            return form_error(games, "Game number is invalid.");
+            return form_error(games, FormError::InvalidGameNumber);
         };
         games.push(game);
     }
@@ -46,16 +55,16 @@ pub(super) fn evaluate_rows(match_format: MatchFormat, rows: &[GameInput]) -> Fo
         Err(error) => FormEvaluation {
             games,
             progress: None,
-            error: Some(error.to_string()),
+            error: Some(FormError::MatchResult(error)),
         },
     }
 }
 
-fn form_error(games: Vec<GameScore>, message: &str) -> FormEvaluation {
+fn form_error(games: Vec<GameScore>, error: FormError) -> FormEvaluation {
     FormEvaluation {
         games,
         progress: None,
-        error: Some(message.to_owned()),
+        error: Some(error),
     }
 }
 
@@ -99,9 +108,6 @@ mod tests {
             &[row(11, 7), GameInput::default(), row(8, 11)],
         );
 
-        assert_eq!(
-            evaluation.error.as_deref(),
-            Some("Enter games sequentially without blank rows.")
-        );
+        assert_eq!(evaluation.error, Some(FormError::BlankRows));
     }
 }

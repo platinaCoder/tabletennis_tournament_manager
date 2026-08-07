@@ -3,6 +3,8 @@ use yew::prelude::*;
 use tabletennis_tournament::application::{ContestantStanding, TournamentEntrant};
 use tabletennis_tournament::identity::EntrantId;
 
+use crate::language::{Text, use_language};
+
 use super::standings::Standings;
 
 #[derive(Properties, PartialEq)]
@@ -16,6 +18,7 @@ pub struct RoundDashboardProps {
 
 #[component]
 pub fn RoundDashboard(props: &RoundDashboardProps) -> Html {
+    let language = use_language();
     let on_calculate = {
         let callback = props.on_calculate.clone();
         Callback::from(move |_| callback.emit(()))
@@ -26,11 +29,11 @@ pub fn RoundDashboard(props: &RoundDashboardProps) -> Html {
         <section class="panel">
             <div class="section-heading">
                 <div>
-                    <p class="eyebrow">{format!("After {} completed rounds", props.completed_round_count)}</p>
-                    <h2>{"Tournament standings"}</h2>
+                    <p class="eyebrow">{language.after_completed_rounds(props.completed_round_count)}</p>
+                    <h2>{language.text(Text::TournamentStandings)}</h2>
                 </div>
                 <button class="primary" onclick={on_calculate}>
-                    {format!("Calculate round {next_round}")}
+                    {language.calculate_round(next_round)}
                 </button>
             </div>
             <Standings

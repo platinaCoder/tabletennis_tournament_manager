@@ -1,5 +1,7 @@
 use tabletennis_tournament::application::TournamentEntrant;
 
+use crate::language::Language;
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) struct RosterRow {
     pub key: usize,
@@ -39,14 +41,17 @@ pub(super) fn blank_row(key: usize) -> RosterRow {
     }
 }
 
-pub(super) fn simulated_rows(count: usize) -> Vec<RosterRow> {
+pub(super) fn simulated_rows(count: usize, language: Language) -> Vec<RosterRow> {
     const CLUBS: [&str; 4] = ["Club Alpha", "Club Bravo", "Club Charlie", "Club Delta"];
     let denominator = count.saturating_sub(1).max(1);
     (0..count)
         .map(|index| RosterRow {
             key: index + 1,
             entrant_id: None,
-            name: format!("Test contestant {:02}", index + 1),
+            name: match language {
+                Language::English => format!("Test contestant {:02}", index + 1),
+                Language::Dutch => format!("Testdeelnemer {:02}", index + 1),
+            },
             club_name: CLUBS[index % CLUBS.len()].to_owned(),
             elo: (900 + index.saturating_mul(600) / denominator).to_string(),
         })

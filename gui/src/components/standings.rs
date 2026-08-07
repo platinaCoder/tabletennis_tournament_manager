@@ -5,6 +5,8 @@ use yew::prelude::*;
 use tabletennis_tournament::application::{ContestantStanding, TournamentEntrant};
 use tabletennis_tournament::identity::EntrantId;
 
+use crate::language::{Text, use_language};
+
 #[derive(Properties, PartialEq)]
 pub struct StandingsProps {
     pub standings: Vec<ContestantStanding>,
@@ -14,6 +16,7 @@ pub struct StandingsProps {
 
 #[component]
 pub fn Standings(props: &StandingsProps) -> Html {
+    let language = use_language();
     let entrants = props
         .entrants
         .iter()
@@ -26,9 +29,9 @@ pub fn Standings(props: &StandingsProps) -> Html {
             <table>
                 <thead>
                     <tr>
-                        <th>{"#"}</th><th>{"Contestant"}</th><th>{"Score"}</th>
-                        <th>{"W-L"}</th><th>{"Games"}</th><th>{"Points"}</th>
-                        <th>{"Opp."}</th><th>{"Bye"}</th>
+                        <th>{"#"}</th><th>{language.text(Text::Contestant)}</th><th>{language.text(Text::Score)}</th>
+                        <th>{language.text(Text::WinsLosses)}</th><th>{language.text(Text::Games)}</th><th>{language.text(Text::Points)}</th>
+                        <th>{language.text(Text::OpponentShort)}</th><th>{language.text(Text::Bye)}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -38,11 +41,11 @@ pub fn Standings(props: &StandingsProps) -> Html {
                             <tr key={standing.entrant_id.as_str().to_owned()}>
                                 <td class="rank">{index + 1}</td>
                                 <td>
-                                    <strong>{entrant.map_or("Unknown contestant", |entrant| entrant.name.as_str())}</strong>
+                                    <strong>{entrant.map_or(language.text(Text::UnknownContestant), |entrant| entrant.name.as_str())}</strong>
                                     <small>
-                                        {entrant.map_or("Unknown club", |entrant| entrant.club_name.as_str())}
+                                        {entrant.map_or(language.text(Text::UnknownClub), |entrant| entrant.club_name.as_str())}
                                         if !active_entrant_ids.contains(&standing.entrant_id) {
-                                            <span class="withdrawn-badge">{"Withdrawn"}</span>
+                                            <span class="withdrawn-badge">{language.text(Text::Withdrawn)}</span>
                                         }
                                     </small>
                                 </td>
