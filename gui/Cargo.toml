@@ -1,0 +1,16 @@
+[package]
+name = "tabletennis_tournament_gui"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tabletennis_tournament = { path = ".." }
+web-sys = { version = "0.3", features = [
+    "HtmlElement",
+    "HtmlInputElement",
+    "HtmlSelectElement",
+    "Location",
+    "Storage",
+    "Window",
+] }
+yew = { version = "0.23", features = ["csr"] }
