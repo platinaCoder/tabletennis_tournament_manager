@@ -16,6 +16,7 @@ use crate::language::{Language, Text, use_language};
 pub struct PairingReviewProps {
     pub proposal: PairingProposal,
     pub entrants: Vec<TournamentEntrant>,
+    pub can_edit: bool,
     pub on_publish: Callback<()>,
     pub on_recalculate: Callback<()>,
 }
@@ -40,10 +41,12 @@ pub fn PairingReview(props: &PairingReviewProps) -> Html {
                         <p class="eyebrow">{language.text(Text::UnpublishedPairingPreview)}</p>
                         <h2>{language.pairing_heading(relaxation_tier(props.proposal.relaxation_tier, language))}</h2>
                     </div>
-                    <div class="button-row">
-                        <button class="secondary" onclick={recalculate}>{language.text(Text::Recalculate)}</button>
-                        <button class="primary" onclick={publish}>{language.text(Text::PublishRound)}</button>
-                    </div>
+                    if props.can_edit {
+                        <div class="button-row">
+                            <button class="secondary" onclick={recalculate}>{language.text(Text::Recalculate)}</button>
+                            <button class="primary" onclick={publish}>{language.text(Text::PublishRound)}</button>
+                        </div>
+                    }
                 </div>
                 <div class="pairing-list">
                     {for props.proposal.matches.iter().map(|pairing| {

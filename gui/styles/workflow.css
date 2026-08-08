@@ -53,6 +53,134 @@ td small {
   margin-top: 1.25rem;
 }
 
+.tournament-dashboard {
+  margin-bottom: 1.25rem;
+}
+
+.tournament-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 0.9rem;
+  margin-top: 1.25rem;
+}
+
+.tournament-dashboard-card {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.8rem;
+  background: var(--card);
+}
+
+.tournament-card-heading,
+.tournament-card-actions,
+.sharing-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.tournament-card-heading {
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.tournament-card-heading h3 {
+  margin-bottom: 0.2rem;
+}
+
+.tournament-card-actions {
+  flex-wrap: wrap;
+  margin-top: auto;
+}
+
+.access-badge {
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.owner-access,
+.editor-access {
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+}
+
+.delete-confirmation {
+  flex-basis: 100%;
+  color: var(--error);
+  font-size: 0.8rem;
+  font-weight: 750;
+}
+
+.dashboard-empty {
+  margin: 1.25rem 0 0;
+}
+
+.sharing-panel {
+  margin-bottom: 1.25rem;
+  border-color: var(--accent);
+}
+
+.sharing-list {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 1.5rem;
+}
+
+.sharing-list h3 {
+  margin: 0.8rem 0 0;
+}
+
+.sharing-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(130px, 0.3fr) auto;
+  padding: 0.75rem;
+  border: 1px solid var(--line-soft);
+  border-radius: 0.65rem;
+  background: var(--card);
+}
+
+.sharing-row > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.pending-invitation {
+  border-style: dashed;
+}
+
+.read-only-notice {
+  display: flex;
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.7rem;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.read-only-panel {
+  max-width: 720px;
+  margin: 4vh auto 0;
+}
+
+@media (max-width: 650px) {
+  .sharing-row {
+    grid-template-columns: 1fr;
+  }
+
+  .read-only-notice {
+    flex-direction: column;
+  }
+}
+
 .result-grid {
   grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
 }

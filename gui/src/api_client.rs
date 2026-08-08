@@ -1,6 +1,8 @@
 use tabletennis_tournament::api_contract::{
-    AuthenticationView, CreateTournamentRequest, RecordMatchResultRequest, ReplaceRosterRequest,
-    TournamentMutationRequest, TournamentSummaryView, TournamentView,
+    AuthenticationView, CreateTournamentRequest, DeleteTournamentRequest, DeleteTournamentResponse,
+    RecordMatchResultRequest, ReplaceRosterRequest, ShareTournamentRequest,
+    TournamentMutationRequest, TournamentSharingView, TournamentSummaryView, TournamentView,
+    UpdateTournamentMemberRequest,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -26,6 +28,68 @@ pub async fn create_tournament(
 
 pub async fn load_tournament(id: &str) -> Result<TournamentView, String> {
     get_json(&format!("/api/tournaments/{id}")).await
+}
+
+pub async fn delete_tournament(
+    id: &str,
+    expected_tournament_revision: u64,
+) -> Result<DeleteTournamentResponse, String> {
+    send_json(
+        "DELETE",
+        &format!("/api/tournaments/{id}"),
+        &DeleteTournamentRequest {
+            expected_tournament_revision,
+        },
+    )
+    .await
+}
+
+pub async fn load_sharing(id: &str) -> Result<TournamentSharingView, String> {
+    get_json(&format!("/api/tournaments/{id}/sharing")).await
+}
+
+pub async fn share_tournament(
+    id: &str,
+    request: &ShareTournamentRequest,
+) -> Result<TournamentSharingView, String> {
+    send_json("POST", &format!("/api/tournaments/{id}/sharing"), request).await
+}
+
+pub async fn update_member_role(
+    tournament_id: &str,
+    user_id: &str,
+    request: &UpdateTournamentMemberRequest,
+) -> Result<TournamentSharingView, String> {
+    send_json(
+        "PUT",
+        &format!("/api/tournaments/{tournament_id}/members/{user_id}"),
+        request,
+    )
+    .await
+}
+
+pub async fn remove_member(
+    tournament_id: &str,
+    user_id: &str,
+) -> Result<TournamentSharingView, String> {
+    send_json(
+        "DELETE",
+        &format!("/api/tournaments/{tournament_id}/members/{user_id}"),
+        &(),
+    )
+    .await
+}
+
+pub async fn delete_invitation(
+    tournament_id: &str,
+    invitation_id: &str,
+) -> Result<TournamentSharingView, String> {
+    send_json(
+        "DELETE",
+        &format!("/api/tournaments/{tournament_id}/invitations/{invitation_id}"),
+        &(),
+    )
+    .await
 }
 
 pub async fn replace_roster(
@@ -98,6 +162,7 @@ where
     let builder = match method {
         "POST" => gloo_net::http::Request::post(url),
         "PUT" => gloo_net::http::Request::put(url),
+        "DELETE" => gloo_net::http::Request::delete(url),
         _ => return Err("unsupported API method".to_owned()),
     };
     let response = builder

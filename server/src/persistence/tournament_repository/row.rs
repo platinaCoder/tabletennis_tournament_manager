@@ -7,7 +7,6 @@ use uuid::Uuid;
 
 pub(super) struct TournamentRow {
     pub id: Uuid,
-    pub created_by_user_id: Uuid,
     pub domain_id: String,
     pub status: String,
     pub match_format: String,
@@ -20,7 +19,6 @@ impl<'row> FromRow<'row, PgRow> for TournamentRow {
     fn from_row(row: &'row PgRow) -> Result<Self, sqlx::Error> {
         Ok(Self {
             id: row.try_get("id")?,
-            created_by_user_id: row.try_get("created_by_user_id")?,
             domain_id: row.try_get("domain_id")?,
             status: row.try_get("status")?,
             match_format: row.try_get("match_format")?,

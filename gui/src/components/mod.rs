@@ -6,13 +6,17 @@ mod roster_form;
 mod roster_state;
 mod round_dashboard;
 mod standings;
+mod tournament_dashboard;
 mod tournament_report;
 mod tournament_setup;
+mod tournament_sharing;
 
 pub use pairing_review::PairingReview;
 pub use registration::Registration;
 pub use result_entry::{ResultEntry, SubmittedResult};
 pub use roster_editor::RosterEditor;
 pub use round_dashboard::RoundDashboard;
+pub use tournament_dashboard::TournamentDashboard;
 pub use tournament_report::TournamentReport;
 pub use tournament_setup::TournamentSetup;
+pub use tournament_sharing::{MemberRoleCommand, ShareAccessCommand, TournamentSharing};

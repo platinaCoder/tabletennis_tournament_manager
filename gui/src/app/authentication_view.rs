@@ -2,7 +2,7 @@ use tabletennis_tournament::tournament::TournamentState;
 use yew::prelude::*;
 
 use super::{App, AuthenticationState, Msg};
-use crate::components::{Registration, TournamentSetup};
+use crate::components::{Registration, TournamentDashboard, TournamentSetup, TournamentSharing};
 use crate::language::Language;
 
 impl App {
@@ -21,10 +21,28 @@ impl App {
             },
             AuthenticationState::SignedIn(_) => match &self.application {
                 None => html! { <>
-                    {self.tournament_picker(context)}
+                    <TournamentDashboard
+                        tournaments={self.tournaments.clone()}
+                        on_open={context.link().callback(Msg::LoadTournament)}
+                        on_delete={context.link().callback(|(id, revision)| Msg::DeleteTournament(id, revision))}
+                        on_share={context.link().callback(Msg::OpenSharing)}
+                    />
+                    {self.sharing.as_ref().map(|sharing| html! {
+                        <TournamentSharing
+                            sharing={sharing.clone()}
+                            on_grant={context.link().callback(Msg::GrantAccess)}
+                            on_update_member={context.link().callback(Msg::UpdateMemberRole)}
+                            on_remove_member={context.link().callback(Msg::RemoveMember)}
+                            on_delete_invitation={context.link().callback(Msg::DeleteInvitation)}
+                            on_close={context.link().callback(|()| Msg::CloseSharing)}
+                        />
+                    }).unwrap_or_default()}
                     <TournamentSetup on_create={context.link().callback(Msg::CreateTournament)} />
                 </> },
-                Some(application) if application.tournament().state() == TournamentState::Draft => {
+                Some(application)
+                    if application.tournament().state() == TournamentState::Draft
+                        && self.can_edit_tournament() =>
+                {
                     html! {
                         <Registration
                             contestant_count={self.initial_contestant_count}
@@ -36,7 +54,13 @@ impl App {
                         />
                     }
                 }
-                Some(application) => self.started_view(context, application),
+                Some(application) if application.tournament().state() == TournamentState::Draft => {
+                    self.read_only_draft(application)
+                }
+                Some(application) => html! { <>
+                    {self.read_only_notice()}
+                    {self.started_view(context, application)}
+                </> },
             },
         }
     }
@@ -65,26 +89,29 @@ impl App {
         }
     }
 
-    fn tournament_picker(&self, context: &Context<Self>) -> Html {
-        if self.tournaments.is_empty() {
-            return Html::default();
-        }
+    fn read_only_draft(
+        &self,
+        application: &tabletennis_tournament::application::TournamentApplication,
+    ) -> Html {
         html! {
-            <section class="panel tournament-picker">
-                <h2>{my_tournaments(self.language)}</h2>
-                <div class="button-row">
-                    {for self.tournaments.iter().map(|tournament| {
-                        let id = tournament.id.clone();
-                        let load = context.link().callback(move |_| Msg::LoadTournament(id.clone()));
-                        html! {
-                            <button class="secondary" onclick={load}>
-                                <strong>{&tournament.title}</strong>
-                                <span>{format!(" · {}", tournament.status)}</span>
-                            </button>
-                        }
-                    })}
-                </div>
+            <section class="panel read-only-panel">
+                <p class="eyebrow">{read_only_label(self.language)}</p>
+                <h2>{application.tournament().id().as_str()}</h2>
+                <p>{draft_waiting_label(self.language)}</p>
             </section>
+        }
+    }
+
+    fn read_only_notice(&self) -> Html {
+        if self.can_edit_tournament() {
+            Html::default()
+        } else {
+            html! {
+                <div class="read-only-notice">
+                    <strong>{read_only_label(self.language)}</strong>
+                    <span>{viewer_explanation(self.language)}</span>
+                </div>
+            }
         }
     }
 
@@ -150,10 +177,28 @@ const fn auth_error_title(language: Language) -> &'static str {
     }
 }
 
-const fn my_tournaments(language: Language) -> &'static str {
+const fn read_only_label(language: Language) -> &'static str {
     match language {
-        Language::English => "Resume a tournament",
-        Language::Dutch => "Toernooi hervatten",
+        Language::English => "Read-only access",
+        Language::Dutch => "Alleen-lezen toegang",
+    }
+}
+
+const fn viewer_explanation(language: Language) -> &'static str {
+    match language {
+        Language::English => {
+            "You can inspect this tournament, but only its owner or editors can change it."
+        }
+        Language::Dutch => {
+            "Je kunt dit toernooi bekijken, maar alleen de eigenaar of bewerkers kunnen het wijzigen."
+        }
+    }
+}
+
+const fn draft_waiting_label(language: Language) -> &'static str {
+    match language {
+        Language::English => "This tournament is still being prepared by an editor.",
+        Language::Dutch => "Dit toernooi wordt nog voorbereid door een bewerker.",
     }
 }
 

@@ -13,6 +13,7 @@ pub struct RoundDashboardProps {
     pub entrants: Vec<TournamentEntrant>,
     pub standings: Vec<ContestantStanding>,
     pub active_entrant_ids: Vec<EntrantId>,
+    pub can_edit: bool,
     pub on_calculate: Callback<()>,
 }
 
@@ -32,9 +33,11 @@ pub fn RoundDashboard(props: &RoundDashboardProps) -> Html {
                     <p class="eyebrow">{language.after_completed_rounds(props.completed_round_count)}</p>
                     <h2>{language.text(Text::TournamentStandings)}</h2>
                 </div>
-                <button class="primary" onclick={on_calculate}>
-                    {language.calculate_round(next_round)}
-                </button>
+                if props.can_edit {
+                    <button class="primary" onclick={on_calculate}>
+                        {language.calculate_round(next_round)}
+                    </button>
+                }
             </div>
             <Standings
                 standings={props.standings.clone()}

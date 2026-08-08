@@ -19,6 +19,7 @@ pub struct MatchFormProps {
     pub home: Option<TournamentEntrant>,
     pub away: Option<TournamentEntrant>,
     pub match_format: MatchFormat,
+    pub can_edit: bool,
     pub existing_result: Option<MatchResult>,
     pub autofocus: bool,
     pub on_submit: Callback<SubmittedResult>,
@@ -42,6 +43,14 @@ pub fn MatchForm(props: &MatchFormProps) -> Html {
     }
     if let Some(result) = &props.existing_result {
         return completed_match(props, result, language);
+    }
+    if !props.can_edit {
+        return html! {
+            <article class="match-card waiting-card">
+                {match_header(props, language)}
+                <p class="muted">{read_only_result_label(language)}</p>
+            </article>
+        };
     }
     if props.scheduled_match.table_number().is_none() {
         return html! {
@@ -216,5 +225,12 @@ fn form_error_label(error: &FormError, language: Language) -> String {
         FormError::GameNumberLimit => language.game_number_limit_error().to_owned(),
         FormError::InvalidGameNumber => language.invalid_game_number_error().to_owned(),
         FormError::MatchResult(error) => language.match_result_error(error),
+    }
+}
+
+const fn read_only_result_label(language: Language) -> &'static str {
+    match language {
+        Language::English => "Waiting for an editor to enter this result.",
+        Language::Dutch => "Wachten tot een bewerker deze uitslag invoert.",
     }
 }

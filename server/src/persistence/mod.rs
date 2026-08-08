@@ -6,5 +6,5 @@ pub use database::connect;
 pub use database::migrate_test_database;
 pub(crate) use tournament_repository::{
     NewTournament, StoredTournament, TournamentRepository, TournamentRepositoryError,
-    TournamentSummary,
+    TournamentSharing, TournamentSummary,
 };

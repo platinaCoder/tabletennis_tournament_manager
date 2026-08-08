@@ -26,6 +26,8 @@ pub struct TournamentSummaryView {
     pub id: String,
     pub title: String,
     pub status: String,
+    pub revision: u64,
+    pub access_role: TournamentAccessRole,
     pub updated_at: String,
 }
 
@@ -33,7 +35,50 @@ pub struct TournamentSummaryView {
 pub struct TournamentView {
     pub id: String,
     pub revision: u64,
+    pub access_role: TournamentAccessRole,
     pub application: TournamentApplicationSnapshot,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TournamentAccessRole {
+    Owner,
+    Editor,
+    Viewer,
+}
+
+impl TournamentAccessRole {
+    pub const fn can_edit(self) -> bool {
+        matches!(self, Self::Owner | Self::Editor)
+    }
+
+    pub const fn is_owner(self) -> bool {
+        matches!(self, Self::Owner)
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct TournamentMemberView {
+    pub user_id: String,
+    pub email: String,
+    pub display_name: Option<String>,
+    pub avatar_url: Option<String>,
+    pub role: TournamentAccessRole,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct TournamentInvitationView {
+    pub id: String,
+    pub email: String,
+    pub role: TournamentAccessRole,
+    pub created_at: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct TournamentSharingView {
+    pub tournament_id: String,
+    pub members: Vec<TournamentMemberView>,
+    pub invitations: Vec<TournamentInvitationView>,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -70,6 +115,27 @@ pub struct ReplaceRosterRequest {
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct TournamentMutationRequest {
     pub expected_tournament_revision: u64,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct DeleteTournamentRequest {
+    pub expected_tournament_revision: u64,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct DeleteTournamentResponse {
+    pub deleted: bool,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct ShareTournamentRequest {
+    pub email: String,
+    pub role: TournamentAccessRole,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct UpdateTournamentMemberRequest {
+    pub role: TournamentAccessRole,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]

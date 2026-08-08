@@ -13,6 +13,8 @@ pub enum ApiError {
     NotFound,
     #[error("the request conflicts with newer server state")]
     RevisionConflict,
+    #[error("the match result was changed by another editor")]
+    ResultRevisionConflict,
     #[error("invalid request: {message}")]
     InvalidRequest { code: &'static str, message: String },
     #[error("authentication could not be completed")]
@@ -37,6 +39,7 @@ impl ApiError {
             Self::Forbidden => (StatusCode::FORBIDDEN, "forbidden"),
             Self::NotFound => (StatusCode::NOT_FOUND, "not_found"),
             Self::RevisionConflict => (StatusCode::CONFLICT, "revision_conflict"),
+            Self::ResultRevisionConflict => (StatusCode::CONFLICT, "result_revision_conflict"),
             Self::InvalidRequest { code, .. } => (StatusCode::BAD_REQUEST, code),
             Self::AuthenticationFailed => (StatusCode::BAD_REQUEST, "authentication_failed"),
             Self::Database(_) | Self::Internal => {

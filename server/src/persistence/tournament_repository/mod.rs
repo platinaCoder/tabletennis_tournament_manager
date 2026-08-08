@@ -1,3 +1,4 @@
+mod access;
 mod error;
 mod load;
 mod match_writer;
@@ -5,9 +6,13 @@ mod model;
 mod round_writer;
 mod row;
 mod save;
+mod sharing;
 
 pub use error::TournamentRepositoryError;
-pub use model::{NewTournament, StoredTournament, TournamentSummary};
+pub use model::{
+    NewTournament, StoredTournament, TournamentInvitation, TournamentMember, TournamentSharing,
+    TournamentSummary,
+};
 
 use sqlx_postgres::PgPool;
 

@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
+use crate::api_contract::TournamentAccessRole;
 use crate::application::TournamentApplication;
 use crate::backend::auth::UserId;
 use crate::results::MatchFormat;
@@ -15,7 +16,6 @@ pub struct NewTournament {
 
 pub struct StoredTournament {
     pub id: Uuid,
-    pub created_by_user_id: UserId,
     pub revision: u64,
     pub application: TournamentApplication,
 }
@@ -24,5 +24,27 @@ pub struct TournamentSummary {
     pub id: Uuid,
     pub title: String,
     pub status: String,
+    pub revision: u64,
+    pub access_role: TournamentAccessRole,
     pub updated_at: DateTime<Utc>,
+}
+
+pub struct TournamentMember {
+    pub user_id: UserId,
+    pub email: String,
+    pub display_name: Option<String>,
+    pub avatar_url: Option<String>,
+    pub role: TournamentAccessRole,
+}
+
+pub struct TournamentInvitation {
+    pub id: Uuid,
+    pub email: String,
+    pub role: TournamentAccessRole,
+    pub created_at: DateTime<Utc>,
+}
+
+pub struct TournamentSharing {
+    pub members: Vec<TournamentMember>,
+    pub invitations: Vec<TournamentInvitation>,
 }

@@ -140,10 +140,43 @@ sessions are opaque 256-bit random values in an `HttpOnly`, `SameSite=Lax`,
 host-only cookie. PostgreSQL stores only a SHA-256 token hash. Sessions expire
 after 14 days and logout deletes the server-side session.
 
-During this phase, an authenticated user can access a tournament only when its
-`created_by_user_id` is that user's internal application ID. The access decision
-is centralized so tournament memberships and application administrators can be
-added in the next phase.
+Tournament authorization is membership-based and enforced by the application
+service rather than the browser or SQL repositories:
+
+```text
+owner  -> view, edit, share, change member roles, revoke access, delete
+editor -> view and edit, including entering match results
+viewer -> view only
+```
+
+The creator receives the permanent owner membership. Owner access cannot be
+downgraded or removed. Sharing uses the recipient's verified Google email. If
+that application user already exists, membership is immediate; otherwise a
+pending access record is claimed when that email next signs in and loads the
+dashboard. The application does not send invitation email in this version.
+
+Deleting a tournament is owner-only, revision-checked and permanent. PostgreSQL
+foreign-key cascades remove its memberships, invitations, entrants, rounds,
+matches, result revisions and game scores in the same database operation.
+
+Tournament mutations retain aggregate optimistic concurrency. Match-result
+entry additionally uses each match's revision. Concurrent results for different
+matches are retried against fresh authoritative state, while concurrent edits
+to the same match return `result_revision_conflict` instead of overwriting data.
+
+The dashboard API routes are:
+
+```text
+GET    /api/tournaments
+POST   /api/tournaments
+GET    /api/tournaments/{id}
+DELETE /api/tournaments/{id}
+GET    /api/tournaments/{id}/sharing
+POST   /api/tournaments/{id}/sharing
+PUT    /api/tournaments/{id}/members/{user_id}
+DELETE /api/tournaments/{id}/members/{user_id}
+DELETE /api/tournaments/{id}/invitations/{invitation_id}
+```
 
 ## Verification
 

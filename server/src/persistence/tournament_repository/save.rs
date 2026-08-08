@@ -26,6 +26,7 @@ impl TournamentRepository {
             new_tournament.table_count,
             new_tournament.maximum_round_count,
         ));
+        let mut transaction = self.pool.begin().await?;
         query::<Postgres>(
             "INSERT INTO tournaments (
                 id, created_by_user_id, domain_id, status, match_format,
@@ -43,11 +44,21 @@ impl TournamentRepository {
             application.tournament().maximum_round_count().value(),
         ))
         .bind(now)
-        .execute(&self.pool)
+        .execute(&mut *transaction)
         .await?;
+        query::<Postgres>(
+            "INSERT INTO tournament_members (
+                tournament_id, user_id, role, created_at, updated_at
+             ) VALUES ($1, $2, 'owner', $3, $3)",
+        )
+        .bind(id)
+        .bind(user_id.as_uuid())
+        .bind(now)
+        .execute(&mut *transaction)
+        .await?;
+        transaction.commit().await?;
         Ok(StoredTournament {
             id,
-            created_by_user_id: user_id,
             revision: 0,
             application,
         })

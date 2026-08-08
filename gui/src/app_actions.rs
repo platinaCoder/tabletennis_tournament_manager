@@ -48,6 +48,7 @@ impl App {
     pub(crate) fn install_tournament_view(&mut self, view: TournamentView) -> Result<(), String> {
         self.tournament_record_id = Some(view.id);
         self.tournament_revision = Some(view.revision);
+        self.tournament_access_role = Some(view.access_role);
         self.application = Some(
             TournamentApplication::restore(view.application).map_err(|error| error.to_string())?,
         );

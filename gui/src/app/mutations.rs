@@ -1,14 +1,21 @@
 use tabletennis_tournament::api_contract::{
-    AuthenticationView, CreateTournamentRequest, TournamentView,
+    AuthenticationView, CreateTournamentRequest, ShareTournamentRequest, TournamentView,
+    UpdateTournamentMemberRequest,
 };
 use yew::prelude::*;
 
 use super::{App, AuthenticationState, Msg};
 use crate::app_actions::result_request;
-use crate::components::SubmittedResult;
+use crate::components::{MemberRoleCommand, ShareAccessCommand, SubmittedResult};
 use crate::model::{CreateTournamentCommand, RosterEntryCommand};
 
 impl App {
+    pub(super) fn refresh_tournaments(&self, context: &Context<Self>) {
+        context.link().send_future(async {
+            Msg::TournamentListLoaded(crate::api_client::list_tournaments().await)
+        });
+    }
+
     pub(super) fn session_loaded(
         &mut self,
         context: &Context<Self>,
@@ -57,6 +64,78 @@ impl App {
                 crate::api_client::create_tournament(&request).await,
             ))
         });
+    }
+
+    pub(super) fn grant_access(&mut self, context: &Context<Self>, command: ShareAccessCommand) {
+        let Some(tournament_id) = self.sharing_tournament_id() else {
+            return;
+        };
+        self.busy = true;
+        context.link().send_future(async move {
+            Msg::SharingLoaded(
+                crate::api_client::share_tournament(
+                    &tournament_id,
+                    &ShareTournamentRequest {
+                        email: command.email,
+                        role: command.role,
+                    },
+                )
+                .await,
+            )
+        });
+    }
+
+    pub(super) fn update_member_role(
+        &mut self,
+        context: &Context<Self>,
+        command: MemberRoleCommand,
+    ) {
+        let Some(tournament_id) = self.sharing_tournament_id() else {
+            return;
+        };
+        self.busy = true;
+        context.link().send_future(async move {
+            Msg::SharingLoaded(
+                crate::api_client::update_member_role(
+                    &tournament_id,
+                    &command.user_id,
+                    &UpdateTournamentMemberRequest { role: command.role },
+                )
+                .await,
+            )
+        });
+    }
+
+    pub(super) fn remove_member(&mut self, context: &Context<Self>, user_id: String) {
+        let Some(tournament_id) = self.sharing_tournament_id() else {
+            return;
+        };
+        self.busy = true;
+        context.link().send_future(async move {
+            Msg::SharingLoaded(crate::api_client::remove_member(&tournament_id, &user_id).await)
+        });
+    }
+
+    pub(super) fn delete_invitation(&mut self, context: &Context<Self>, invitation_id: String) {
+        let Some(tournament_id) = self.sharing_tournament_id() else {
+            return;
+        };
+        self.busy = true;
+        context.link().send_future(async move {
+            Msg::SharingLoaded(
+                crate::api_client::delete_invitation(&tournament_id, &invitation_id).await,
+            )
+        });
+    }
+
+    fn sharing_tournament_id(&mut self) -> Option<String> {
+        self.sharing
+            .as_ref()
+            .map(|sharing| sharing.tournament_id.clone())
+            .or_else(|| {
+                self.error = Some("Open tournament sharing before changing access.".to_owned());
+                None
+            })
     }
 
     pub(super) fn start_tournament(

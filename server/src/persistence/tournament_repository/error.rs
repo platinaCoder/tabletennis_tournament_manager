@@ -8,6 +8,12 @@ pub enum TournamentRepositoryError {
     InvalidPairingJson(#[from] serde_json::Error),
     #[error("the tournament revision changed")]
     RevisionConflict,
+    #[error("the tournament owner role cannot be changed or removed")]
+    OwnerRoleImmutable,
+    #[error("the tournament member was not found")]
+    MemberNotFound,
+    #[error("the tournament invitation was not found")]
+    InvitationNotFound,
 }
 
 impl From<crate::application::TournamentSnapshotError> for TournamentRepositoryError {

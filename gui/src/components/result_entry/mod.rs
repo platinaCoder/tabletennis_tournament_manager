@@ -24,6 +24,7 @@ pub struct ResultEntryProps {
     pub round: ActiveRound,
     pub entrants: Vec<TournamentEntrant>,
     pub match_format: MatchFormat,
+    pub can_edit: bool,
     pub allow_simulation: bool,
     pub on_submit: Callback<SubmittedResult>,
     pub on_simulate_remaining: Callback<()>,
@@ -74,14 +75,16 @@ pub fn ResultEntry(props: &ResultEntryProps) -> Html {
                     <h2>{language.matches_complete(results.len(), props.round.scheduled_matches.len())}</h2>
                 </div>
                 <div class="button-row">
-                    if props.allow_simulation {
+                    if props.allow_simulation && props.can_edit {
                         <button class="test-action" disabled={complete} onclick={on_simulate}>
                             {language.text(Text::SimulateRemainingGames)}
                         </button>
                     }
-                    <button class="primary" disabled={!complete} onclick={on_complete}>
-                        {language.text(Text::CompleteRound)}
-                    </button>
+                    if props.can_edit {
+                        <button class="primary" disabled={!complete} onclick={on_complete}>
+                            {language.text(Text::CompleteRound)}
+                        </button>
+                    }
                 </div>
             </div>
             <p class="keyboard-hint">{language.keyboard_hint()}</p>
@@ -103,6 +106,7 @@ pub fn ResultEntry(props: &ResultEntryProps) -> Html {
                             {home}
                             {away}
                             match_format={props.match_format}
+                            can_edit={props.can_edit}
                             {existing_result}
                             autofocus={first_pending.as_ref() == Some(&scheduled.match_id)}
                             on_submit={props.on_submit.clone()}

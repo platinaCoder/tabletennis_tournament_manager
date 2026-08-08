@@ -4,10 +4,10 @@ pkgs.mkShell {
 	packages = with pkgs; [
 		rustc
 		cargo
-		rustup
 		rust-analyzer
 		rustfmt
 		clippy
+		rustup
     trunk
     llvm
     lld

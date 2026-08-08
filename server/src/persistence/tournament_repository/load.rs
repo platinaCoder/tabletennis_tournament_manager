@@ -1,15 +1,12 @@
 use std::time::SystemTime;
 
-use sqlx::query::query;
 use sqlx::query_as::query_as;
-use sqlx::row::Row;
 use uuid::Uuid;
 
 use crate::application::{
     ActiveRound, CompletedRound, PairingPreviewSnapshot, TournamentApplication,
     TournamentApplicationSnapshot, TournamentEntrant,
 };
-use crate::backend::auth::UserId;
 use crate::identity::{ClubId, EntrantId, MatchId};
 use crate::pairing::EloRating;
 use crate::pairing::algorithms::PairingSnapshot;
@@ -22,40 +19,15 @@ use crate::scheduling::TableNumber;
 use crate::tournament::{MaximumRoundCount, TableCount, Tournament, TournamentId};
 
 use super::row::{EntrantRow, GameRow, MatchRow, ResultRow, RoundRow, TournamentRow};
-use super::{StoredTournament, TournamentRepository, TournamentRepositoryError, TournamentSummary};
+use super::{StoredTournament, TournamentRepository, TournamentRepositoryError};
 
 impl TournamentRepository {
-    pub async fn list_for_creator(
-        &self,
-        user_id: UserId,
-    ) -> Result<Vec<TournamentSummary>, TournamentRepositoryError> {
-        let rows = query::<sqlx_postgres::Postgres>(
-            "SELECT id, domain_id, status, updated_at
-             FROM tournaments
-             WHERE created_by_user_id = $1
-             ORDER BY updated_at DESC, id",
-        )
-        .bind(user_id.as_uuid())
-        .fetch_all(&self.pool)
-        .await?;
-        rows.into_iter()
-            .map(|row| {
-                Ok(TournamentSummary {
-                    id: row.try_get("id")?,
-                    title: row.try_get("domain_id")?,
-                    status: row.try_get("status")?,
-                    updated_at: row.try_get("updated_at")?,
-                })
-            })
-            .collect()
-    }
-
     pub async fn load(
         &self,
         tournament_id: Uuid,
     ) -> Result<Option<StoredTournament>, TournamentRepositoryError> {
         let Some(row) = query_as::<sqlx_postgres::Postgres, TournamentRow>(
-            "SELECT id, created_by_user_id, domain_id, status, match_format,
+            "SELECT id, domain_id, status, match_format,
                     table_count, maximum_round_count, revision
              FROM tournaments WHERE id = $1",
         )
@@ -152,7 +124,6 @@ impl TournamentRepository {
         let revision = u64::try_from(row.revision).map_err(invalid)?;
         Ok(Some(StoredTournament {
             id: row.id,
-            created_by_user_id: UserId::from_uuid(row.created_by_user_id),
             revision,
             application,
         }))

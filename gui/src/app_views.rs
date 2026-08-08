@@ -16,6 +16,7 @@ impl App {
                 <PairingReview
                     proposal={proposal.clone()}
                     entrants={application.entrants().to_vec()}
+                    can_edit={self.can_edit_tournament()}
                     on_publish={context.link().callback(|()| Msg::PublishPairings)}
                     on_recalculate={context.link().callback(|()| Msg::CalculatePairings)}
                 />
@@ -27,6 +28,7 @@ impl App {
                     round={round.clone()}
                     entrants={application.entrants().to_vec()}
                     match_format={application.tournament().match_format()}
+                    can_edit={self.can_edit_tournament()}
                     allow_simulation={self.development_tools_enabled}
                     on_submit={context.link().callback(Msg::SubmitResult)}
                     on_simulate_remaining={context.link().callback(|()| Msg::SimulateRemainingResults)}
@@ -52,6 +54,7 @@ impl App {
                 entrants={application.entrants().to_vec()}
                 standings={application.standings().to_vec()}
                 active_entrant_ids={application.active_entrants().map(|entrant| entrant.entrant_id.clone()).collect::<Vec<_>>()}
+                can_edit={self.can_edit_tournament()}
                 on_calculate={context.link().callback(|()| Msg::CalculatePairings)}
             />
         }

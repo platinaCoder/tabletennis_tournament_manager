@@ -1,12 +1,13 @@
 use yew::prelude::*;
 
 use tabletennis_tournament::api_contract::{
-    AuthenticatedUserView, AuthenticationView, TournamentSummaryView, TournamentView,
+    AuthenticatedUserView, AuthenticationView, DeleteTournamentResponse, TournamentAccessRole,
+    TournamentSharingView, TournamentSummaryView, TournamentView,
 };
 use tabletennis_tournament::application::TournamentApplication;
 use tabletennis_tournament::tournament::TournamentState;
 
-use crate::components::{RosterEditor, SubmittedResult};
+use crate::components::{MemberRoleCommand, RosterEditor, ShareAccessCommand, SubmittedResult};
 use crate::formatting::match_format;
 use crate::language::{Language, Text};
 use crate::model::{CreateTournamentCommand, RosterEntryCommand};
@@ -18,8 +19,10 @@ pub struct App {
     pub(crate) application: Option<TournamentApplication>,
     pub(crate) tournament_record_id: Option<String>,
     pub(crate) tournament_revision: Option<u64>,
+    pub(crate) tournament_access_role: Option<TournamentAccessRole>,
     authentication: AuthenticationState,
     tournaments: Vec<TournamentSummaryView>,
+    sharing: Option<TournamentSharingView>,
     error: Option<String>,
     busy: bool,
     pub(crate) initial_contestant_count: usize,
@@ -43,6 +46,15 @@ pub enum Msg {
     SessionLoaded(Result<AuthenticationView, String>),
     TournamentListLoaded(Result<Vec<TournamentSummaryView>, String>),
     LoadTournament(String),
+    OpenSharing(String),
+    SharingLoaded(Result<TournamentSharingView, String>),
+    GrantAccess(ShareAccessCommand),
+    UpdateMemberRole(MemberRoleCommand),
+    RemoveMember(String),
+    DeleteInvitation(String),
+    CloseSharing,
+    DeleteTournament(String, u64),
+    TournamentDeleted(Result<DeleteTournamentResponse, String>),
     NewTournament,
     CreateTournament(CreateTournamentCommand),
     StartTournament(Vec<RosterEntryCommand>),
@@ -77,8 +89,10 @@ impl Component for App {
             application: None,
             tournament_record_id: None,
             tournament_revision: None,
+            tournament_access_role: None,
             authentication: AuthenticationState::Loading,
             tournaments: Vec::new(),
+            sharing: None,
             error: None,
             busy: false,
             initial_contestant_count: 16,
@@ -106,10 +120,53 @@ impl Component for App {
                     ))
                 });
             }
+            Msg::OpenSharing(id) => {
+                self.busy = true;
+                context.link().send_future(async move {
+                    Msg::SharingLoaded(crate::api_client::load_sharing(&id).await)
+                });
+            }
+            Msg::SharingLoaded(result) => {
+                self.busy = false;
+                match result {
+                    Ok(sharing) => {
+                        self.sharing = Some(sharing);
+                        self.error = None;
+                    }
+                    Err(error) => self.error = Some(error),
+                }
+            }
+            Msg::GrantAccess(command) => self.grant_access(context, command),
+            Msg::UpdateMemberRole(command) => self.update_member_role(context, command),
+            Msg::RemoveMember(user_id) => self.remove_member(context, user_id),
+            Msg::DeleteInvitation(invitation_id) => self.delete_invitation(context, invitation_id),
+            Msg::CloseSharing => self.sharing = None,
+            Msg::DeleteTournament(id, revision) => {
+                self.busy = true;
+                context.link().send_future(async move {
+                    Msg::TournamentDeleted(
+                        crate::api_client::delete_tournament(&id, revision).await,
+                    )
+                });
+            }
+            Msg::TournamentDeleted(result) => {
+                self.busy = false;
+                match result {
+                    Ok(response) if response.deleted => {
+                        self.sharing = None;
+                        self.error = None;
+                        self.refresh_tournaments(context);
+                    }
+                    Ok(_) => self.error = Some("The tournament was not deleted.".to_owned()),
+                    Err(error) => self.error = Some(error),
+                }
+            }
             Msg::NewTournament => {
                 self.application = None;
                 self.tournament_record_id = None;
                 self.tournament_revision = None;
+                self.tournament_access_role = None;
+                self.sharing = None;
                 self.error = None;
             }
             Msg::CreateTournament(command) => self.create_tournament(context, command),
@@ -128,7 +185,13 @@ impl Component for App {
             Msg::SubmitResult(submission) => self.submit_result(context, submission),
             Msg::SimulateRemainingResults => self.simulate_remaining(context),
             Msg::ExportSimulationTrace => self.export_simulation(),
-            Msg::TournamentMutationFinished(result) => self.mutation_finished(*result),
+            Msg::TournamentMutationFinished(result) => {
+                let succeeded = result.is_ok();
+                self.mutation_finished(*result);
+                if succeeded {
+                    self.refresh_tournaments(context);
+                }
+            }
             Msg::Logout => {
                 self.busy = true;
                 context
@@ -143,7 +206,9 @@ impl Component for App {
                         self.application = None;
                         self.tournament_record_id = None;
                         self.tournament_revision = None;
+                        self.tournament_access_role = None;
                         self.tournaments.clear();
+                        self.sharing = None;
                     }
                     Err(error) => self.error = Some(error),
                 }
@@ -219,6 +284,9 @@ impl App {
         if application.tournament().state() != TournamentState::Started {
             return Html::default();
         }
+        if !self.can_edit_tournament() {
+            return Html::default();
+        }
         let toggle = context.link().callback(|_| Msg::ToggleRoster);
         html! {
             <button class="secondary compact" onclick={toggle}>
@@ -261,6 +329,11 @@ impl App {
                 </div>
             }
         }).unwrap_or_default()
+    }
+
+    pub(crate) fn can_edit_tournament(&self) -> bool {
+        self.tournament_access_role
+            .is_some_and(TournamentAccessRole::can_edit)
     }
 }
 
