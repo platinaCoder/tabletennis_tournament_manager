@@ -1,10 +1,10 @@
+mod api_client;
 pub mod app;
 mod app_actions;
 mod app_views;
 pub mod components;
 mod developer_export;
 mod formatting;
-mod game_simulation;
 mod language;
 pub mod model;
 mod route;

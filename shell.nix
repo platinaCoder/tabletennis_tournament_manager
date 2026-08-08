@@ -11,6 +11,8 @@ pkgs.mkShell {
     llvm
     lld
     bubblewrap
+    pnpm
+    sqlx-cli
 	];
 
 	shellHook = ''

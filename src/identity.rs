@@ -1,4 +1,6 @@
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct MatchId(String);
 
 impl MatchId {
@@ -11,7 +13,7 @@ impl MatchId {
     }
 }
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct EntrantId(String);
 
 impl EntrantId {
@@ -24,7 +26,7 @@ impl EntrantId {
     }
 }
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct ClubId(String);
 
 impl ClubId {

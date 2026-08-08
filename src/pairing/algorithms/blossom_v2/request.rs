@@ -1,7 +1,8 @@
 use super::super::blossom_v1;
 use super::{BlossomV2Policy, PairingEntrant, PreviousMatch, RoundNumber};
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct PairingRequest {
     pub round_number: RoundNumber,
     pub entrants: Vec<PairingEntrant>,

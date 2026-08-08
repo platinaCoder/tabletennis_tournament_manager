@@ -3,7 +3,8 @@ use std::collections::HashSet;
 use crate::identity::EntrantId;
 use crate::pairing::algorithms::PairingSnapshot;
 use crate::pairing::algorithms::blossom_v1::PairingProposal;
-use crate::tournament::{Tournament, TournamentState};
+use crate::results::MatchFormat;
+use crate::tournament::{MaximumRoundCount, TableCount, Tournament, TournamentState};
 
 use super::standings::calculate_standings;
 use super::{
@@ -35,6 +36,19 @@ impl TournamentApplication {
 
     pub fn tournament(&self) -> &Tournament {
         &self.tournament
+    }
+
+    pub fn update_draft_configuration(
+        &mut self,
+        match_format: MatchFormat,
+        table_count: TableCount,
+        maximum_round_count: MaximumRoundCount,
+    ) -> Result<(), TournamentApplicationError> {
+        self.tournament.change_match_format(match_format)?;
+        self.tournament.change_table_count(table_count)?;
+        self.tournament
+            .change_maximum_round_count(maximum_round_count)?;
+        Ok(())
     }
 
     pub fn entrants(&self) -> &[TournamentEntrant] {

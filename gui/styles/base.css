@@ -79,6 +79,15 @@ body {
   --shadow: 0 16px 50px rgb(0 0 0 / 24%);
 }
 
+.theme-root.api-busy::after {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  content: "";
+  cursor: progress;
+  background: rgb(0 0 0 / 6%);
+}
+
 button,
 input,
 select {

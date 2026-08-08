@@ -9,8 +9,10 @@ pub mod blossom_v1;
 pub mod blossom_v2;
 
 use blossom_v1::PairingProposal;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(tag = "version", content = "policy", rename_all = "snake_case")]
 pub enum PairingPolicy {
     BlossomV1(blossom_v1::BlossomV1Policy),
     BlossomV2(blossom_v2::BlossomV2Policy),
@@ -34,7 +36,8 @@ impl From<blossom_v2::BlossomV2Policy> for PairingPolicy {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(tag = "version", content = "request", rename_all = "snake_case")]
 pub enum PairingSnapshot {
     BlossomV1(blossom_v1::PairingRequest),
     BlossomV2(blossom_v2::PairingRequest),

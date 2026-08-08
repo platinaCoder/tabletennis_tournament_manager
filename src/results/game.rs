@@ -1,11 +1,13 @@
 use std::error::Error;
 use std::fmt::{self, Display, Formatter};
 
+use serde::{Deserialize, Serialize};
+
 /// A checked point total suitable for storage in an unsigned 16-bit column.
 ///
 /// Table-tennis rules do not add an artificial score cap. The upper bound here
 /// is solely the storage/input-safety limit.
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct GamePoints(u16);
 
 impl GamePoints {
@@ -55,7 +57,7 @@ impl Display for GamePointsError {
 
 impl Error for GamePointsError {}
 
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct GameNumber(u8);
 
 impl GameNumber {
@@ -87,7 +89,7 @@ impl Display for GameNumberError {
 
 impl Error for GameNumberError {}
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct GameScore {
     pub game_number: GameNumber,
     pub home_points: GamePoints,

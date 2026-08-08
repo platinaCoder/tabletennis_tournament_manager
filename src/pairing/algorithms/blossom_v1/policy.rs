@@ -1,4 +1,6 @@
-#[derive(Clone, Debug, Eq, PartialEq)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct BlossomV1Policy {
     pub avoid_same_club: bool,
     pub avoid_rematches: bool,

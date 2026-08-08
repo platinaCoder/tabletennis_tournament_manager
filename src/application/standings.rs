@@ -3,12 +3,13 @@ use std::collections::HashMap;
 use crate::identity::EntrantId;
 use crate::pairing::algorithms::blossom_v1::PerformanceScore;
 use crate::results::MatchSide;
+use serde::{Deserialize, Serialize};
 
 use super::scoring::EloExpectationDeltaV1;
 use super::standing_accumulator::StandingAccumulator;
 use super::{CompletedRound, TournamentApplicationError, TournamentEntrant};
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct ContestantStanding {
     pub entrant_id: EntrantId,
     pub performance_score: PerformanceScore,

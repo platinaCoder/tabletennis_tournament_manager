@@ -1,8 +1,9 @@
 use crate::identity::EntrantId;
+use serde::{Deserialize, Serialize};
 
 use super::{PairingDiagnostics, PairingWarning, RelaxationTier};
 
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct PairingCost(u64);
 
 impl PairingCost {
@@ -15,7 +16,7 @@ impl PairingCost {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct PairingCostBreakdown {
     /// Weighted component values before deterministic scaling.
     pub performance_score_gap: u64,
@@ -31,13 +32,14 @@ pub struct PairingCostBreakdown {
     pub total: u64,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum PairingPolicyVersion {
     BlossomV1,
     BlossomV2,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct PairingProposal {
     /// Order is deterministic for auditing but has no sporting meaning.
     pub matches: Vec<ProposedMatch>,
@@ -49,14 +51,14 @@ pub struct PairingProposal {
     pub diagnostics: PairingDiagnostics,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct ProposedMatch {
     pub first_entrant_id: EntrantId,
     pub second_entrant_id: EntrantId,
     pub cost: PairingCostBreakdown,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct ProposedBye {
     pub entrant_id: EntrantId,
     pub cost: PairingCostBreakdown,

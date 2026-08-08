@@ -4,12 +4,14 @@ mod table_count;
 use std::error::Error;
 use std::fmt::{self, Display, Formatter};
 
+use serde::{Deserialize, Serialize};
+
 use crate::results::MatchFormat;
 
 pub use maximum_round_count::{MaximumRoundCount, MaximumRoundCountError};
 pub use table_count::{TableCount, TableCountError};
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct TournamentId(String);
 
 impl TournamentId {
@@ -22,13 +24,14 @@ impl TournamentId {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum TournamentState {
     Draft,
     Started,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct Tournament {
     id: TournamentId,
     state: TournamentState,

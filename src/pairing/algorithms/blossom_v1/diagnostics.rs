@@ -1,8 +1,10 @@
 use std::time::Duration;
 
 use crate::identity::EntrantId;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum RelaxationTier {
     Strict,
     SameClubAllowed,
@@ -21,7 +23,8 @@ impl RelaxationTier {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(tag = "warning", rename_all = "snake_case")]
 pub enum PairingWarning {
     SameClubPairingRequired {
         first_entrant_id: EntrantId,
@@ -39,7 +42,7 @@ pub enum PairingWarning {
     },
 }
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct PairingDiagnostics {
     pub candidate_pair_count: usize,
     pub eligible_edge_count: usize,

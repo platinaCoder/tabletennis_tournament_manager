@@ -26,13 +26,6 @@ impl Language {
         }
     }
 
-    pub const fn tournament_identifier_error(self) -> &'static str {
-        match self {
-            Self::English => "Tournament identifier is required.",
-            Self::Dutch => "Een toernooi-identificatie is verplicht.",
-        }
-    }
-
     pub const fn contestant_range_error(self) -> &'static str {
         match self {
             Self::English => "Contestant count must be between 2 and 64.",
@@ -58,20 +51,6 @@ impl Language {
         match self {
             Self::English => "The roster contains the same contestant twice.",
             Self::Dutch => "De deelnemerslijst bevat dezelfde deelnemer twee keer.",
-        }
-    }
-
-    pub const fn no_active_round_error(self) -> &'static str {
-        match self {
-            Self::English => "There is no active round to simulate.",
-            Self::Dutch => "Er is geen actieve ronde om te simuleren.",
-        }
-    }
-
-    pub const fn unknown_simulated_contestant_error(self) -> &'static str {
-        match self {
-            Self::English => "A simulated match references an unknown contestant.",
-            Self::Dutch => "Een gesimuleerde wedstrijd verwijst naar een onbekende deelnemer.",
         }
     }
 

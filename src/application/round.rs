@@ -3,8 +3,9 @@ use crate::pairing::algorithms::PairingSnapshot;
 use crate::pairing::algorithms::blossom_v1::{PairingProposal, RoundNumber};
 use crate::results::MatchResult;
 use crate::scheduling::ScheduledMatch;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct ActiveRound {
     pub round_number: RoundNumber,
     pub pairing_request: PairingSnapshot,
@@ -14,7 +15,7 @@ pub struct ActiveRound {
     pub bye: Option<EntrantId>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct CompletedRound {
     pub round_number: RoundNumber,
     pub pairing_request: PairingSnapshot,

@@ -1,136 +1,147 @@
-<div align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="./docs/static/image/logo-dark.png">
-    <img alt="spin logo" src="./docs/static/image/logo.png" width="300" height="128">
-  </picture>
-  <p>Spin is a framework for building, deploying, and running fast, secure, and composable cloud microservices with WebAssembly.</p>
-      <a href="https://github.com/spinframework/spin/actions/workflows/build.yml"><img src="https://github.com/spinframework/spin/actions/workflows/build.yml/badge.svg" alt="build status" /></a>
-      <a href="https://cloud-native.slack.com/archives/C089NJ9G1V0"><img alt="Slack" src="https://img.shields.io/badge/slack-spin-green.svg?logo=slack"></a>
-      <a href="https://www.bestpractices.dev/projects/10373"><img src="https://www.bestpractices.dev/projects/10373/badge"></a>
-</div>
+# Table-tennis tournament manager
 
-## What is Spin?
+The application consists of a Yew/WASM browser interface and one Axum API on
+Vercel's official Rust runtime. The API is authoritative: browsers never
+connect to PostgreSQL and never receive Google or database credentials.
 
-Spin is an open source framework for building and running fast, secure, and
-composable cloud microservices with WebAssembly. It aims to be the easiest way
-to get started with WebAssembly microservices, and takes advantage of the latest
-developments in the
-[WebAssembly component model](https://github.com/WebAssembly/component-model)
-and [Wasmtime](https://wasmtime.dev/) runtime.
+## Architecture
 
-Spin offers a simple CLI that helps you create, distribute, and execute
-applications, and in the next sections we will learn more about Spin
-applications and how to get started.
-
-## Getting started
-
-See the [Install Spin](https://spinframework.dev/install) page of the [Spin documentation](https://spinframework.dev) for a detailed
-guide on installing and configuring Spin, but in short run the following commands:
-```bash
-curl -fsSL https://spinframework.dev/downloads/install.sh | bash
-sudo mv ./spin /usr/local/bin/spin
+```text
+Yew/WASM -> /api/* -> Axum/Vercel Function -> Neon PostgreSQL
+                         |
+                         +-> Google OpenID Connect
 ```
 
-Alternatively, you could [build Spin from source](https://spinframework.dev/contributing-spin).
+The existing domain and pairing modules remain shared by the GUI, simulator and
+server. `BlossomV2` is the active policy. `BlossomV1` remains available for
+regression comparisons. SQL row types and Google-specific types stay within the
+backend boundary under `server/`.
 
-To get started writing apps, follow the [quickstart guide](https://spinframework.dev/quickstart/),
-and then follow the
-[Rust](https://spinframework.dev/rust-components/), [JavaScript](https://spinframework.dev/javascript-components), [Python](https://spinframework.dev/python-components), or [Go](https://spinframework.dev/go-components/)
-language guides, and the [guide on writing Spin applications](https://spinframework.dev/writing-apps/).
+## Required environment variables
 
-## Language support
+Copy `.env.example` to a local untracked environment file or configure the same
+names in Vercel:
 
-WebAssembly is a language-agnostic runtime: you can build WebAssembly components from a variety of source languages. Spin SDKs are available for several languages, including:
-
-* JavaScript: https://github.com/spinframework/spin-js-sdk
-* Rust: https://crates.io/crates/spin-sdk
-* Go: https://pkg.go.dev/github.com/fermyon/spin/sdk/go/v2
-* Python: https://github.com/spinframework/spin-python-sdk
-* Zig: https://github.com/dasimmet/zig-spin (third party)
-* Moonbit: https://github.com/gmlewis/spin-moonbit-sdk (third party)
-
-> The Spin framework team supports the JavaScript, Rust, Go, and Python SDKs. Other language integrations are supported by their authors, and we're grateful to them for their work!
-
-## Usage
-
-Below is an example of using the `spin` CLI to create a new Spin application.  To run the example you will need to install the `wasm32-wasip2` target for Rust.
-
-```bash
-$ rustup target add wasm32-wasip2
+```text
+DATABASE_URL=
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+APP_BASE_URL=http://localhost:3000
+DATABASE_MAX_CONNECTIONS=4
 ```
 
-First, run the `spin new` command to create a Spin application from a template.
-```bash
-# Create a new Spin application named 'hello-rust' based on the Rust http template, accepting all defaults
-$ spin new --accept-defaults -t http-rust hello-rust
-```
-Running the `spin new` command created a `hello-rust` directory with all the necessary files for your application. Change to the `hello-rust` directory and build the application with `spin build`, then run it locally with `spin up`:
+`DATABASE_URL` must be the Neon pooled PostgreSQL URL. All values are server
+secrets except `APP_BASE_URL`, but none are compiled into the WASM bundle.
+`DATABASE_MAX_CONNECTIONS` is optional and defaults to `4` per warm function
+instance.
+
+Never commit `.env` files or credentials. If a credential has appeared in a
+terminal transcript, issue, chat or commit, rotate it before use.
+
+## Database migrations
+
+Install the SQLx CLI version used by the application:
 
 ```bash
-# Compile to Wasm by executing the `build` command.
-$ spin build
-Executing the build command for component hello-rust: cargo build --target wasm32-wasip2 --release
-    Finished release [optimized] target(s) in 0.03s
-Successfully ran the build command for the Spin components.
-
-# Run the application locally.
-$ spin up
-Logging component stdio to ".spin/logs/"
-
-Serving http://127.0.0.1:3000
-Available Routes:
-  hello-rust: http://127.0.0.1:3000 (wildcard)
+cargo install sqlx-cli --version 0.8.6 --locked \
+  --no-default-features --features rustls,postgres
 ```
 
-That's it! Now that the application is running, use your browser or cURL in another shell to try it out:
+Apply committed migrations explicitly:
 
 ```bash
-# Send a request to the application.
-$ curl -i 127.0.0.1:3000
-HTTP/1.1 200 OK
-content-type: text/plain
-transfer-encoding: chunked
-date: Sun, 02 Mar 2025 20:09:11 GMT
-
-Hello World!
+DATABASE_URL='postgresql://…' sqlx migrate run --source server/migrations
 ```
 
-You can make the app do more by editting the `src/lib.rs` file in the `hello-rust` directory using your favorite editor or IDE. To learn more about writing Spin applications see [Writing Applications](https://spinframework.dev/writing-apps) in the Spin documentation.  To learn how to publish and distribute your application see the [Publishing and Distribution](https://spinframework.dev/distributing-apps) guide in the Spin documentation.
+Normal request handlers never create or migrate tables. Run migrations before
+deploying code that requires them.
 
-## Language Support for Spin Features
+## Google OAuth configuration
 
-The table below summarizes the [feature support](https://spinframework.dev/language-support-overview) in each of the language SDKs.
+Create a Google OAuth client of type **Web application**. Configure these exact
+authorized redirect URIs:
 
-| Feature | Rust SDK Supported? | TypeScript SDK Supported? | Python SDK Supported? | Tiny Go SDK Supported? | C# SDK Supported? |
-|-----|-----|-----|-----|-----|-----|
-| **Triggers** |
-| [HTTP](https://spinframework.dev/http-trigger) | Supported | Supported | Supported | Supported | Supported |
-| [Redis](https://spinframework.dev/redis-trigger) | Supported | Supported | Supported | Supported | Not Supported |
-| **APIs** |
-| [Outbound HTTP](https://spinframework.dev/rust-components.md#sending-outbound-http-requests) | Supported | Supported | Supported | Supported | Supported |
-| [Configuration Variables](https://spinframework.dev/variables) | Supported | Supported | Supported | Supported | Supported |
-| [Key Value Storage](https://spinframework.dev/kv-store-api-guide) | Supported | Supported | Supported | Supported | Not Supported |
-| [SQLite Storage](https://spinframework.dev/sqlite-api-guide) | Supported | Supported | Supported | Supported | Not Supported |
-| [MySQL](https://spinframework.dev/rdbms-storage#using-mysql-and-postgresql-from-applications) | Supported | Supported | Not Supported | Supported | Not Supported |
-| [PostgreSQL](https://spinframework.dev/rdbms-storage#using-mysql-and-postgresql-from-applications) | Supported | Supported | Not Supported | Supported | Supported |
-| [Outbound Redis](https://spinframework.dev/rust-components.md#storing-data-in-redis-from-rust-components) | Supported | Supported | Supported | Supported | Supported |
-| [Serverless AI](https://spinframework.dev/serverless-ai-api-guide) | Supported | Supported | Supported | Supported | Not Supported |
-| **Extensibility** |
-| [Authoring Custom Triggers](https://spinframework.dev/extending-and-embedding) | Supported | Not Supported | Not Supported | Not Supported | Not Supported |
+```text
+http://localhost:3000/api/auth/google/callback
+https://ttt-manager.vercel.app/api/auth/google/callback
+```
 
-## Getting Involved and Contributing
+Set `APP_BASE_URL` to the matching origin, without an `/api` suffix:
 
-We are delighted that you are interested in making Spin better! Thank you!
+```text
+Local:      http://localhost:3000
+Production: https://ttt-manager.vercel.app
+```
 
-Each Monday at 2:30pm UTC (odd weeks) and 9:00pm UTC (even weeks), we meet to discuss Spin issues, roadmap, and ideas in our Spin Project Meetings. Link to the meeting can be found in the Spin Project Meeting agenda below.
+Google requires an exact redirect URI match. Dynamic Vercel Preview domains do
+not support wildcard redirect URIs. A preview can use Google login only when
+that exact preview callback URL is registered and `APP_BASE_URL` matches it.
+This project intentionally has no cross-domain preview authentication relay.
 
-The [Spin Project Meeting agenda](https://docs.google.com/document/d/1EG392gb8Eg-1ZEPDy18pgFZvMMrdAEybpCSufFXoe00/edit?usp=sharing) is a public document. The document contains a rolling agenda with the date and time of each meeting, the Zoom link, and topics of discussion for the day. You will also find the meeting minutes for each meeting and the link to the recording. If you have something you would like to demo or discuss at the project meeting, we encourage you to add it to the agenda.
+Only `openid`, `email` and `profile` are requested. Provider access and refresh
+tokens are not stored.
 
-You can find the contributing guide [here](https://spinframework.dev/contributing-spin).
+## Local development
 
-## Stay in Touch
+Install Trunk, the WASM target and Vercel CLI, then link the project if needed:
 
-Follow us on Twitter: [@spinframework](https://twitter.com/spinframework)
+```bash
+rustup target add wasm32-unknown-unknown
+cargo install --locked trunk --version 0.21.14
+pnpm install --global vercel
+vercel link
+```
 
-You can join the Spin community in the [Spin CNCF Slack channel](https://cloud-native.slack.com/archives/C089NJ9G1V0) where you can ask questions, get help, and show off the cool things you are doing with Spin!
+Provide the environment variables and run the production-like router from the
+repository root:
 
+```bash
+vercel dev --listen 3000
+```
+
+Open `http://localhost:3000/` for normal operation or
+`http://localhost:3000/dev` for simulation tooling. The Google localhost
+redirect URI above must be registered before local sign-in works.
+
+For frontend-only visual work, `cd gui && trunk serve` still runs the static
+interface, but authenticated API actions require `vercel dev`.
+
+## Vercel deployment
+
+Configure `DATABASE_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and
+`APP_BASE_URL` in the Vercel Production environment. Apply migrations, then
+deploy through the connected Git repository or:
+
+```bash
+vercel deploy --prod
+```
+
+`vercel.json` sends `/api/*` to the single Rust/Axum function, keeps the SPA and
+`/dev` fallback routes, and places the function in Frankfurt (`fra1`) beside the
+EU-central Neon database. No source changes are needed between environments.
+
+## Authentication and authorization
+
+Google login uses Authorization Code flow with PKCE S256, OAuth state and an
+OIDC nonce. The ID token is verified by the `openid` OIDC client. Application
+sessions are opaque 256-bit random values in an `HttpOnly`, `SameSite=Lax`,
+host-only cookie. PostgreSQL stores only a SHA-256 token hash. Sessions expire
+after 14 days and logout deletes the server-side session.
+
+During this phase, an authenticated user can access a tournament only when its
+`created_by_user_id` is that user's internal application ID. The access decision
+is centralized so tournament memberships and application administrators can be
+added in the next phase.
+
+## Verification
+
+```bash
+cargo fmt --check
+cargo test --workspace
+cargo clippy --workspace --all-targets -- -D warnings
+cargo clippy -p tabletennis_tournament_gui \
+  --target wasm32-unknown-unknown -- -D warnings
+(cd gui && trunk build --release)
+cargo build --release --bin vercel-api
+cargo audit
+```

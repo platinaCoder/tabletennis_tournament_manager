@@ -1,20 +1,23 @@
 use crate::identity::{EntrantId, MatchId};
+use serde::{Deserialize, Serialize};
 
 pub use crate::table::TableNumber;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum MatchPublicationStatus {
     Draft,
     Published,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum RoundActivity {
     Active,
     Inactive,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct ScheduledMatch {
     pub match_id: MatchId,
     pub home_entrant_id: EntrantId,

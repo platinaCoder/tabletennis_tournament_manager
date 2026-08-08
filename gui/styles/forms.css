@@ -39,20 +39,23 @@ input:disabled {
 }
 
 button.primary,
-button.secondary {
+button.secondary,
+a.button {
   min-height: 2.7rem;
   padding: 0.65rem 1rem;
   border-radius: 0.55rem;
   font-weight: 800;
 }
 
-button.primary {
+button.primary,
+a.button.primary {
   border: 1px solid var(--accent);
   background: var(--accent);
   color: white;
 }
 
-button.primary:hover:not(:disabled) {
+button.primary:hover:not(:disabled),
+a.button.primary:hover {
   border-color: var(--accent-dark);
   background: var(--accent-dark);
 }
@@ -98,6 +101,24 @@ button.compact {
 .header-actions {
   align-items: center;
   justify-content: flex-end;
+}
+
+a.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.identity-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.identity-controls > span {
+  color: var(--muted);
+  font-size: 0.82rem;
 }
 
 .roster-list {

@@ -2,6 +2,8 @@ use std::error::Error;
 use std::fmt::{self, Display, Formatter};
 use std::time::SystemTime;
 
+use serde::{Deserialize, Serialize};
+
 use crate::platform_time::system_time_now;
 
 use super::{
@@ -9,7 +11,7 @@ use super::{
     ScheduledMatch,
 };
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct GamesWon(u8);
 
 impl GamesWon {
@@ -57,17 +59,36 @@ impl MatchProgress {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct MatchResultRevision(u32);
 
 impl MatchResultRevision {
     pub const fn value(self) -> u32 {
         self.0
     }
+
+    pub fn try_from_value(value: u32) -> Result<Self, MatchResultRevisionError> {
+        if value == 0 {
+            Err(MatchResultRevisionError)
+        } else {
+            Ok(Self(value))
+        }
+    }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct MatchResultRevisionError;
+
+impl Display for MatchResultRevisionError {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
+        formatter.write_str("match result revision must be greater than zero")
+    }
+}
+
+impl Error for MatchResultRevisionError {}
+
 /// A completed match whose summary fields are derived from its games.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct MatchResult {
     match_id: MatchId,
     games: Vec<GameScore>,
@@ -292,6 +313,23 @@ pub fn validate_and_complete_match(
         submitted_games,
         system_time_now(),
     )
+}
+
+/// Reconstructs a persisted result while re-running all game and match rules.
+/// Summary fields are always derived from `games`.
+pub fn restore_match_result(
+    scheduled_match: &ScheduledMatch,
+    match_format: MatchFormat,
+    games: Vec<GameScore>,
+    entered_at: SystemTime,
+    corrected_at: Option<SystemTime>,
+    revision: MatchResultRevision,
+) -> Result<MatchResult, MatchResultError> {
+    let mut result =
+        validate_and_complete_match_at(scheduled_match, match_format, games, entered_at)?;
+    result.corrected_at = corrected_at;
+    result.revision = revision;
+    Ok(result)
 }
 
 pub(super) fn validate_and_complete_match_at(

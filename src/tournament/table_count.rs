@@ -2,7 +2,9 @@ use std::error::Error;
 use std::fmt::{self, Display, Formatter};
 use std::num::NonZeroU16;
 
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct TableCount(NonZeroU16);
 
 impl TableCount {
