@@ -34,6 +34,7 @@ pub struct PairingCostBreakdown {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PairingPolicyVersion {
     BlossomV1,
+    BlossomV2,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

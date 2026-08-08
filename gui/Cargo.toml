@@ -4,15 +4,22 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+js-sys = "0.3"
+serde_json = "1"
 tabletennis_tournament = { path = ".." }
+wasm-bindgen = "0.2"
 web-sys = { version = "0.3", features = [
+    "Blob",
+    "BlobPropertyBag",
     "Document",
     "Element",
+    "HtmlAnchorElement",
     "HtmlElement",
     "HtmlInputElement",
     "HtmlSelectElement",
     "Location",
     "Storage",
+    "Url",
     "Window",
 ] }
 yew = { version = "0.23", features = ["csr"] }

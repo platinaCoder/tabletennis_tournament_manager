@@ -1,7 +1,6 @@
 use crate::identity::MatchId;
-use crate::pairing::algorithms::blossom_v1::{
-    BlossomV1Policy, PairingProposal, RoundNumber, propose_pairings,
-};
+use crate::pairing::algorithms::blossom_v1::{PairingProposal, RoundNumber};
+use crate::pairing::algorithms::{PairingPolicy, propose_pairings};
 use crate::pairing::{
     MatchPublication, TableAssignmentEntrant, assign_tables, publish_scheduled_matches,
 };
@@ -9,6 +8,7 @@ use crate::results::{GameScore, MatchResult, RoundActivity, validate_and_complet
 
 use super::pairing_snapshot::build_pairing_request;
 use super::standings::calculate_standings;
+use super::tournament::PendingPairing;
 use super::{ActiveRound, CompletedRound, TournamentApplication, TournamentApplicationError};
 
 impl TournamentApplication {
@@ -16,7 +16,7 @@ impl TournamentApplication {
     /// replaces an older preview because no match identifiers exist yet.
     pub fn calculate_pairings(
         &mut self,
-        policy: BlossomV1Policy,
+        policy: impl Into<PairingPolicy>,
     ) -> Result<PairingProposal, TournamentApplicationError> {
         self.ensure_started()?;
         if self.active_round.is_some() {
@@ -34,10 +34,13 @@ impl TournamentApplication {
             &self.standings,
             &self.completed_rounds,
             self.next_round_number()?,
-            policy,
+            policy.into(),
         )?;
         let proposal = propose_pairings(&request)?;
-        self.pending_pairing = Some(proposal.clone());
+        self.pending_pairing = Some(PendingPairing {
+            request,
+            proposal: proposal.clone(),
+        });
         Ok(proposal)
     }
 
@@ -46,10 +49,11 @@ impl TournamentApplication {
         if self.active_round.is_some() {
             return Err(TournamentApplicationError::ActiveRoundExists);
         }
-        let proposal = self
+        let pending = self
             .pending_pairing
             .take()
             .ok_or(TournamentApplicationError::NoPairingPreview)?;
+        let proposal = pending.proposal;
         let round_number = self.next_round_number()?;
         let publications = proposal
             .matches
@@ -75,6 +79,7 @@ impl TournamentApplication {
         let bye = proposal.bye.as_ref().map(|bye| bye.entrant_id.clone());
         self.active_round = Some(ActiveRound {
             round_number,
+            pairing_request: pending.request,
             proposal,
             scheduled_matches,
             results: Vec::new(),
@@ -149,6 +154,7 @@ impl TournamentApplication {
         }
         self.completed_rounds.push(CompletedRound {
             round_number: round.round_number,
+            pairing_request: round.pairing_request,
             proposal: round.proposal,
             scheduled_matches: round.scheduled_matches,
             results: round.results,

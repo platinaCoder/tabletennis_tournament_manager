@@ -6,7 +6,7 @@ use super::blossom_feasibility::maximum_cardinality_matching;
 use super::solver_graph::SolverGraph;
 use super::{PairingCandidateGraph, PairingEdgeTarget, PairingRequest};
 
-pub(super) fn retain_fairest_feasible_byes(
+pub(crate) fn retain_fairest_feasible_byes(
     request: &PairingRequest,
     graph: &mut PairingCandidateGraph,
 ) {

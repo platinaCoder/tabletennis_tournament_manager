@@ -1,6 +1,8 @@
 use std::time::Duration;
 
-use tabletennis_tournament::pairing::algorithms::blossom_v1::RelaxationTier;
+use tabletennis_tournament::pairing::algorithms::blossom_v1::{
+    PairingPolicyVersion, RelaxationTier,
+};
 use tabletennis_tournament::results::MatchFormat;
 
 use crate::language::Language;
@@ -53,6 +55,13 @@ pub(crate) const fn relaxation_tier(tier: RelaxationTier, language: Language) ->
         (RelaxationTier::Strict, Language::Dutch) => "Strikt",
         (RelaxationTier::SameClubAllowed, Language::Dutch) => "Versoepeling: dezelfde vereniging",
         (RelaxationTier::RematchesAllowed, Language::Dutch) => "Versoepeling: herkansingen",
+    }
+}
+
+pub(crate) const fn pairing_policy_version(version: PairingPolicyVersion) -> &'static str {
+    match version {
+        PairingPolicyVersion::BlossomV1 => "Blossom V1",
+        PairingPolicyVersion::BlossomV2 => "Blossom V2",
     }
 }
 

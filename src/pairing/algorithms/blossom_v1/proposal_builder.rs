@@ -15,6 +15,7 @@ pub(super) fn build_proposal(
     request: &PairingRequest,
     graph: &PairingCandidateGraph,
     selected_edge_indices: &[usize],
+    policy_version: PairingPolicyVersion,
 ) -> Result<PairingProposal, BlossomPairingError> {
     let validation_started = DiagnosticInstant::now();
     let entrants = request
@@ -98,7 +99,7 @@ pub(super) fn build_proposal(
         bye: selected_bye,
         relaxation_tier: graph.relaxation_tier,
         total_cost: PairingCost::new(total_cost),
-        policy_version: PairingPolicyVersion::BlossomV1,
+        policy_version,
         warnings,
         diagnostics,
     })

@@ -18,6 +18,7 @@ pub struct App {
     dark_mode: bool,
     pub(crate) language: Language,
     pub(crate) development_tools_enabled: bool,
+    pub(crate) simulation_run_seed: Option<u64>,
 }
 
 pub enum Msg {
@@ -31,6 +32,7 @@ pub enum Msg {
     PublishPairings,
     SubmitResult(SubmittedResult),
     SimulateRemainingResults,
+    ExportSimulationTrace,
     CompleteRound,
     DismissError,
 }
@@ -53,6 +55,7 @@ impl Component for App {
             dark_mode: crate::theme::load_dark_mode(),
             language,
             development_tools_enabled,
+            simulation_run_seed: None,
         }
     }
 
@@ -124,6 +127,7 @@ impl Component for App {
                     <div class="header-actions">
                         {self.application.as_ref().map(|application| tournament_status(application, language)).unwrap_or_default()}
                         {self.roster_button(context)}
+                        {self.simulation_export_button(context)}
                         {self.theme_button(context)}
                         {self.language_button(context)}
                     </div>
@@ -180,6 +184,18 @@ impl App {
         html! {
             <button class="secondary compact" onclick={toggle}>
                 {if self.roster_open { self.language.text(Text::CloseRoster) } else { self.language.text(Text::ManageContestants) }}
+            </button>
+        }
+    }
+
+    fn simulation_export_button(&self, context: &Context<Self>) -> Html {
+        if !self.development_tools_enabled || self.application.is_none() {
+            return Html::default();
+        }
+        let export = context.link().callback(|_| Msg::ExportSimulationTrace);
+        html! {
+            <button class="test-action compact" onclick={export}>
+                {self.language.text(Text::ExportSimulationJson)}
             </button>
         }
     }

@@ -2,7 +2,7 @@ use crate::identity::EntrantId;
 use crate::platform_time::DiagnosticInstant;
 use std::collections::HashSet;
 
-use super::edge_cost::{self, CostContext};
+use super::edge_cost::{BlossomV1CostCalculator, CostContext};
 use super::{
     BlossomPairingError, PairingCost, PairingCostBreakdown, PairingCostComponent,
     PairingDiagnostics, PairingEntrant, PairingRequest, RelaxationTier,
@@ -35,9 +35,37 @@ pub struct PairingCandidateGraph {
     pub diagnostics: PairingDiagnostics,
 }
 
+pub(crate) trait PairingEdgeCostCalculator {
+    fn match_cost(
+        &self,
+        first: &PairingEntrant,
+        second: &PairingEntrant,
+        context: CostContext,
+    ) -> Result<(PairingCost, PairingCostBreakdown), BlossomPairingError>;
+
+    fn bye_cost(
+        &self,
+        entrant: &PairingEntrant,
+        tie_break: u64,
+        tie_break_scale: u64,
+    ) -> Result<(PairingCost, PairingCostBreakdown), BlossomPairingError>;
+}
+
 pub fn build_candidate_graph(
     request: &PairingRequest,
     relaxation_tier: RelaxationTier,
+) -> Result<PairingCandidateGraph, BlossomPairingError> {
+    build_candidate_graph_with(
+        request,
+        relaxation_tier,
+        &BlossomV1CostCalculator::new(request),
+    )
+}
+
+pub(crate) fn build_candidate_graph_with(
+    request: &PairingRequest,
+    relaxation_tier: RelaxationTier,
+    cost_calculator: &impl PairingEdgeCostCalculator,
 ) -> Result<PairingCandidateGraph, BlossomPairingError> {
     super::validate_request(request)?;
 
@@ -92,7 +120,9 @@ pub fn build_candidate_graph(
     let edges = candidates
         .into_iter()
         .enumerate()
-        .map(|(index, candidate)| candidate.calculate(request, u64_index(index)?, tie_break_scale))
+        .map(|(index, candidate)| {
+            candidate.calculate(cost_calculator, u64_index(index)?, tie_break_scale)
+        })
         .collect::<Result<Vec<_>, BlossomPairingError>>()?;
     let cost_calculation_duration = cost_started.elapsed();
 
@@ -113,6 +143,23 @@ pub fn build_candidate_graph(
         },
         edges,
     })
+}
+
+/// Builds the stable-ID candidate graph used at every relaxation tier.
+///
+/// Bye edges are filtered with the same fairness rule used by the production
+/// solver. Private node indexes and solver state are intentionally absent.
+pub fn build_relaxation_graphs(
+    request: &PairingRequest,
+) -> Result<Vec<PairingCandidateGraph>, BlossomPairingError> {
+    RelaxationTier::ORDERED
+        .into_iter()
+        .map(|tier| {
+            let mut graph = build_candidate_graph(request, tier)?;
+            super::bye_eligibility::retain_fairest_feasible_byes(request, &mut graph);
+            Ok(graph)
+        })
+        .collect()
 }
 
 enum CandidateEdge<'a> {
@@ -139,7 +186,7 @@ impl CandidateEdge<'_> {
 
     fn calculate(
         self,
-        request: &PairingRequest,
+        cost_calculator: &impl PairingEdgeCostCalculator,
         tie_break: u64,
         tie_break_scale: u64,
     ) -> Result<PairingCandidateEdge, BlossomPairingError> {
@@ -150,8 +197,7 @@ impl CandidateEdge<'_> {
                 same_club,
                 rematch,
             } => {
-                let (cost, breakdown) = edge_cost::match_cost(
-                    request,
+                let (cost, breakdown) = cost_calculator.match_cost(
                     first,
                     second,
                     CostContext {
@@ -172,7 +218,7 @@ impl CandidateEdge<'_> {
             }
             Self::Bye { entrant } => {
                 let (cost, breakdown) =
-                    edge_cost::bye_cost(request, entrant, tie_break, tie_break_scale)?;
+                    cost_calculator.bye_cost(entrant, tie_break, tie_break_scale)?;
                 Ok(PairingCandidateEdge {
                     first_entrant_id: entrant.entrant_id.clone(),
                     target: PairingEdgeTarget::Bye,

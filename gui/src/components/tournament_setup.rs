@@ -19,6 +19,7 @@ pub fn TournamentSetup(props: &TournamentSetupProps) -> Html {
     let contestant_count = use_state(|| "16".to_owned());
     let maximum_round_count = use_state(|| "5".to_owned());
     let match_format = use_state(|| MatchFormat::BestOfFive);
+    let match_format_select = use_node_ref();
 
     let onsubmit = {
         let tournament_id = tournament_id.clone();
@@ -26,12 +27,17 @@ pub fn TournamentSetup(props: &TournamentSetupProps) -> Html {
         let contestant_count = contestant_count.clone();
         let maximum_round_count = maximum_round_count.clone();
         let match_format = match_format.clone();
+        let match_format_select = match_format_select.clone();
         let on_create = props.on_create.clone();
         Callback::from(move |event: SubmitEvent| {
             event.prevent_default();
+            let submitted_match_format = match_format_select
+                .cast::<HtmlSelectElement>()
+                .and_then(|select| match_format_from_value(&select.value()))
+                .unwrap_or(*match_format);
             on_create.emit(CreateTournamentCommand {
                 tournament_id: (*tournament_id).clone(),
-                match_format: *match_format,
+                match_format: submitted_match_format,
                 table_count: table_count.parse().unwrap_or(0),
                 contestant_count: contestant_count.parse().unwrap_or(0),
                 maximum_round_count: maximum_round_count.parse().unwrap_or(0),
@@ -46,11 +52,9 @@ pub fn TournamentSetup(props: &TournamentSetupProps) -> Html {
         let match_format = match_format.clone();
         Callback::from(move |event: Event| {
             let select = event.target_unchecked_into::<HtmlSelectElement>();
-            match_format.set(if select.value() == "best_of_three" {
-                MatchFormat::BestOfThree
-            } else {
-                MatchFormat::BestOfFive
-            });
+            if let Some(format) = match_format_from_value(&select.value()) {
+                match_format.set(format);
+            }
         })
     };
 
@@ -69,6 +73,7 @@ pub fn TournamentSetup(props: &TournamentSetupProps) -> Html {
                 <label>
                     <span>{language.text(Text::MatchFormat)}</span>
                     <select
+                        ref={match_format_select}
                         value={match *match_format {
                             MatchFormat::BestOfThree => "best_of_three",
                             MatchFormat::BestOfFive => "best_of_five",
@@ -97,8 +102,34 @@ pub fn TournamentSetup(props: &TournamentSetupProps) -> Html {
     }
 }
 
+fn match_format_from_value(value: &str) -> Option<MatchFormat> {
+    match value {
+        "best_of_three" => Some(MatchFormat::BestOfThree),
+        "best_of_five" => Some(MatchFormat::BestOfFive),
+        _ => None,
+    }
+}
+
 fn text_input(state: UseStateHandle<String>) -> Callback<InputEvent> {
     Callback::from(move |event: InputEvent| {
         state.set(event.target_unchecked_into::<HtmlInputElement>().value());
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn setup_values_map_to_the_selected_match_format() {
+        assert_eq!(
+            match_format_from_value("best_of_three"),
+            Some(MatchFormat::BestOfThree)
+        );
+        assert_eq!(
+            match_format_from_value("best_of_five"),
+            Some(MatchFormat::BestOfFive)
+        );
+        assert_eq!(match_format_from_value("unexpected"), None);
+    }
 }

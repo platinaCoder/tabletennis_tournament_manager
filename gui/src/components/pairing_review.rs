@@ -7,7 +7,9 @@ use tabletennis_tournament::pairing::algorithms::blossom_v1::{
     PairingCostBreakdown, PairingProposal, PairingWarning,
 };
 
-use crate::formatting::{compact_u64, duration, grouped_u64, relaxation_tier};
+use crate::formatting::{
+    compact_u64, duration, grouped_u64, pairing_policy_version, relaxation_tier,
+};
 use crate::language::{Language, Text, use_language};
 
 #[derive(Properties, PartialEq)]
@@ -73,6 +75,7 @@ pub fn PairingReview(props: &PairingReviewProps) -> Html {
                 <p class="eyebrow">{language.text(Text::DeveloperDiagnostics)}</p>
                 <h2>{language.text(Text::PairingCalculation)}</h2>
                 <dl class="diagnostics-grid">
+                    <dt>{language.text(Text::PairingPolicy)}</dt><dd>{pairing_policy_version(props.proposal.policy_version)}</dd>
                     <dt>{language.text(Text::RelaxationTier)}</dt><dd>{relaxation_tier(props.proposal.relaxation_tier, language)}</dd>
                     <dt>{language.text(Text::TotalCost)}</dt><dd>{cost_number(props.proposal.total_cost.value())}</dd>
                     <dt>{language.text(Text::CandidatePairs)}</dt><dd>{diagnostics.candidate_pair_count}</dd>

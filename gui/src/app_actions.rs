@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use tabletennis_tournament::application::{TournamentApplication, TournamentEntrant};
 use tabletennis_tournament::identity::{ClubId, EntrantId};
 use tabletennis_tournament::pairing::EloRating;
-use tabletennis_tournament::pairing::algorithms::blossom_v1::BlossomV1Policy;
+use tabletennis_tournament::pairing::algorithms::blossom_v2::BlossomV2Policy;
 use tabletennis_tournament::tournament::{MaximumRoundCount, TableCount, Tournament, TournamentId};
 
 use crate::app::{App, Msg, RosterAction};
@@ -24,7 +24,7 @@ impl App {
             }
             Msg::CalculatePairings => self
                 .application_mut()?
-                .calculate_pairings(BlossomV1Policy::default())
+                .calculate_pairings(BlossomV2Policy::default())
                 .map(|_| RosterAction::None)
                 .map_err(error),
             Msg::PublishPairings => self
@@ -42,6 +42,21 @@ impl App {
                     return Err(self.language.simulation_route_error().to_owned());
                 }
                 self.simulate_remaining_results()?;
+                Ok(RosterAction::None)
+            }
+            Msg::ExportSimulationTrace => {
+                if !self.development_tools_enabled {
+                    return Err(self.language.simulation_route_error().to_owned());
+                }
+                let application = self
+                    .application
+                    .as_ref()
+                    .ok_or_else(|| self.language.create_tournament_first_error().to_owned())?;
+                let run_seed = self
+                    .simulation_run_seed
+                    .ok_or_else(|| self.language.simulation_seed_error().to_owned())?;
+                crate::developer_export::download_simulation_json(application, run_seed)
+                    .map_err(|error| self.language.simulation_export_error(&error))?;
                 Ok(RosterAction::None)
             }
             Msg::CompleteRound => self
@@ -69,6 +84,9 @@ impl App {
         let maximum_round_count =
             MaximumRoundCount::try_from(command.maximum_round_count).map_err(error)?;
         self.initial_contestant_count = command.contestant_count;
+        self.simulation_run_seed = self
+            .development_tools_enabled
+            .then(crate::simulation_seed::fresh_simulation_seed);
         self.application = Some(TournamentApplication::new(Tournament::new(
             TournamentId::new(command.tournament_id.trim()),
             command.match_format,

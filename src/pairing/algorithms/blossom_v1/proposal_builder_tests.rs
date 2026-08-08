@@ -44,7 +44,13 @@ fn exact_selection_becomes_a_complete_deterministic_proposal() {
     let graph = build_candidate_graph(&request, RelaxationTier::Strict).unwrap();
     let matching = solve_exactly(&graph).unwrap().unwrap();
 
-    let proposal = build_proposal(&request, &graph, &matching.edge_indices).unwrap();
+    let proposal = build_proposal(
+        &request,
+        &graph,
+        &matching.edge_indices,
+        PairingPolicyVersion::BlossomV1,
+    )
+    .unwrap();
 
     assert_eq!(proposal.matches.len(), 2);
     assert_eq!(proposal.bye, None);
@@ -68,8 +74,15 @@ fn solver_edge_order_has_no_effect_on_proposal_order() {
     let mut reversed = matching.edge_indices.clone();
     reversed.reverse();
 
-    let first = build_proposal(&request, &graph, &matching.edge_indices).unwrap();
-    let second = build_proposal(&request, &graph, &reversed).unwrap();
+    let first = build_proposal(
+        &request,
+        &graph,
+        &matching.edge_indices,
+        PairingPolicyVersion::BlossomV1,
+    )
+    .unwrap();
+    let second =
+        build_proposal(&request, &graph, &reversed, PairingPolicyVersion::BlossomV1).unwrap();
 
     assert_eq!(first.matches, second.matches);
     assert_eq!(first.bye, second.bye);
@@ -84,7 +97,13 @@ fn relaxed_same_club_pairing_produces_diagnostics_not_an_error() {
     let graph = build_candidate_graph(&request, RelaxationTier::SameClubAllowed).unwrap();
     let matching = solve_exactly(&graph).unwrap().unwrap();
 
-    let proposal = build_proposal(&request, &graph, &matching.edge_indices).unwrap();
+    let proposal = build_proposal(
+        &request,
+        &graph,
+        &matching.edge_indices,
+        PairingPolicyVersion::BlossomV1,
+    )
+    .unwrap();
 
     assert_eq!(
         proposal.warnings,
@@ -111,7 +130,12 @@ fn duplicate_entrant_from_solver_is_rejected() {
         .unwrap();
 
     assert!(matches!(
-        build_proposal(&request, &graph, &[first_edge, first_edge]),
+        build_proposal(
+            &request,
+            &graph,
+            &[first_edge, first_edge],
+            PairingPolicyVersion::BlossomV1,
+        ),
         Err(BlossomPairingError::InvalidSolverOutput {
             reason: InvalidSolverOutputReason::DuplicateEntrant
         })
@@ -127,7 +151,12 @@ fn avoidable_repeated_bye_is_rejected() {
     let remaining_match = edge_index(&graph, "b", Some("c"));
 
     assert!(matches!(
-        build_proposal(&request, &graph, &[repeated_bye, remaining_match]),
+        build_proposal(
+            &request,
+            &graph,
+            &[repeated_bye, remaining_match],
+            PairingPolicyVersion::BlossomV1,
+        ),
         Err(BlossomPairingError::InvalidSolverOutput {
             reason: InvalidSolverOutputReason::AvoidableRepeatedBye
         })

@@ -1,8 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::pairing::algorithms::blossom_v1::{
-    BlossomV1Policy, PairingEntrant, PairingRequest, PreviousMatch, RoundNumber,
-};
+use crate::pairing::algorithms::blossom_v1::{PairingEntrant, PreviousMatch, RoundNumber};
+use crate::pairing::algorithms::{PairingPolicy, PairingSnapshot, blossom_v1, blossom_v2};
 
 use super::{CompletedRound, ContestantStanding, TournamentApplicationError, TournamentEntrant};
 
@@ -11,8 +10,8 @@ pub(super) fn build_pairing_request(
     standings: &[ContestantStanding],
     completed_rounds: &[CompletedRound],
     round_number: RoundNumber,
-    policy: BlossomV1Policy,
-) -> Result<PairingRequest, TournamentApplicationError> {
+    policy: PairingPolicy,
+) -> Result<PairingSnapshot, TournamentApplicationError> {
     let standing_by_id = standings
         .iter()
         .map(|standing| (&standing.entrant_id, standing))
@@ -60,11 +59,23 @@ pub(super) fn build_pairing_request(
         })
         .collect();
 
-    Ok(PairingRequest {
-        round_number,
-        entrants,
-        previous_matches,
-        policy,
+    Ok(match policy {
+        PairingPolicy::BlossomV1(policy) => {
+            PairingSnapshot::BlossomV1(blossom_v1::PairingRequest {
+                round_number,
+                entrants,
+                previous_matches,
+                policy,
+            })
+        }
+        PairingPolicy::BlossomV2(policy) => {
+            PairingSnapshot::BlossomV2(blossom_v2::PairingRequest {
+                round_number,
+                entrants,
+                previous_matches,
+                policy,
+            })
+        }
     })
 }
 

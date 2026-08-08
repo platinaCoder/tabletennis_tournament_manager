@@ -200,11 +200,45 @@ fn public_match_simulation_is_deterministic_and_domain_valid() {
         42,
     )
     .unwrap();
+    let different_seed = simulate_match_games(
+        crate::results::MatchFormat::BestOfFive,
+        crate::pairing::EloRating::new(1_500),
+        crate::pairing::EloRating::new(1_200),
+        43,
+    )
+    .unwrap();
 
     assert_eq!(first, second);
+    assert_ne!(first, different_seed);
     assert!(
         crate::results::evaluate_match_progress(crate::results::MatchFormat::BestOfFive, &first,)
             .unwrap()
             .is_complete()
+    );
+}
+
+#[test]
+fn simulated_match_winners_follow_the_match_level_elo_expectation() {
+    use crate::results::{MatchFormat, MatchSide, evaluate_match_progress};
+
+    let mut random = super::result_generator::DeterministicRandom::new(0x51_7a_7e);
+    let mut underdog_wins = 0_u32;
+    let sample_count = 20_000_u32;
+
+    for _ in 0..sample_count {
+        let games = super::result_generator::simulate_games(
+            MatchFormat::BestOfFive,
+            crate::pairing::EloRating::new(900),
+            crate::pairing::EloRating::new(1_500),
+            &mut random,
+        )
+        .unwrap();
+        let progress = evaluate_match_progress(MatchFormat::BestOfFive, &games).unwrap();
+        underdog_wins += u32::from(progress.winner() == Some(MatchSide::Home));
+    }
+
+    assert!(
+        (450..=800).contains(&underdog_wins),
+        "observed {underdog_wins} underdog wins in {sample_count} matches"
     );
 }

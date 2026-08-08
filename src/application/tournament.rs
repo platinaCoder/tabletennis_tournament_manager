@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use crate::identity::EntrantId;
+use crate::pairing::algorithms::PairingSnapshot;
 use crate::pairing::algorithms::blossom_v1::PairingProposal;
 use crate::tournament::{Tournament, TournamentState};
 
@@ -15,7 +16,7 @@ pub struct TournamentApplication {
     pub(super) standings: Vec<ContestantStanding>,
     pub(super) completed_rounds: Vec<CompletedRound>,
     pub(super) active_round: Option<ActiveRound>,
-    pub(super) pending_pairing: Option<PairingProposal>,
+    pub(super) pending_pairing: Option<PendingPairing>,
     pub(super) active_entrant_ids: HashSet<EntrantId>,
 }
 
@@ -63,7 +64,9 @@ impl TournamentApplication {
     }
 
     pub fn pending_pairing(&self) -> Option<&PairingProposal> {
-        self.pending_pairing.as_ref()
+        self.pending_pairing
+            .as_ref()
+            .map(|pending| &pending.proposal)
     }
 
     pub fn register_entrant(
@@ -190,4 +193,9 @@ impl TournamentApplication {
             Ok(self.standings.clone())
         }
     }
+}
+
+pub(super) struct PendingPairing {
+    pub request: PairingSnapshot,
+    pub proposal: PairingProposal,
 }

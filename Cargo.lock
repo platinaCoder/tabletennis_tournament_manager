@@ -654,6 +654,7 @@ name = "tabletennis_tournament"
 version = "0.1.0"
 dependencies = [
  "js-sys",
+ "serde",
  "web-sys",
 ]
 
@@ -661,7 +662,10 @@ dependencies = [
 name = "tabletennis_tournament_gui"
 version = "0.1.0"
 dependencies = [
+ "js-sys",
+ "serde_json",
  "tabletennis_tournament",
+ "wasm-bindgen",
  "web-sys",
  "yew",
 ]

@@ -7,6 +7,9 @@ use crate::app::App;
 impl App {
     pub(crate) fn simulate_remaining_results(&mut self) -> Result<(), String> {
         let language = self.language;
+        let run_seed = self
+            .simulation_run_seed
+            .ok_or_else(|| language.simulation_seed_error().to_owned())?;
         let application = self
             .application
             .as_ref()
@@ -44,7 +47,10 @@ impl App {
                 match_format,
                 home_elo,
                 away_elo,
-                stable_seed(scheduled.match_id.as_str()),
+                crate::simulation_seed::match_simulation_seed(
+                    run_seed,
+                    scheduled.match_id.as_str(),
+                ),
             )
             .map_err(error)?;
             simulated.push((scheduled.match_id.clone(), games));
@@ -61,14 +67,6 @@ impl App {
         }
         Ok(())
     }
-}
-
-fn stable_seed(value: &str) -> u64 {
-    value
-        .bytes()
-        .fold(14_695_981_039_346_656_037, |hash, byte| {
-            (hash ^ u64::from(byte)).wrapping_mul(1_099_511_628_211)
-        })
 }
 
 fn unknown_contestant(language: crate::language::Language) -> String {

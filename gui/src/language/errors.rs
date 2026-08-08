@@ -10,6 +10,22 @@ impl Language {
         }
     }
 
+    pub fn simulation_export_error(self, detail: &str) -> String {
+        match self {
+            Self::English => format!("Could not export the simulation trace: {detail}"),
+            Self::Dutch => format!("Kon het simulatieverslag niet exporteren: {detail}"),
+        }
+    }
+
+    pub const fn simulation_seed_error(self) -> &'static str {
+        match self {
+            Self::English => "Create a new /dev tournament to initialize its simulation seed.",
+            Self::Dutch => {
+                "Maak een nieuw /dev-toernooi aan om de simulatiereeks te initialiseren."
+            }
+        }
+    }
+
     pub const fn tournament_identifier_error(self) -> &'static str {
         match self {
             Self::English => "Tournament identifier is required.",

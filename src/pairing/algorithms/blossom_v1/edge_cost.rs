@@ -3,11 +3,41 @@ use super::{
     PairingRequest,
 };
 
-pub(super) struct CostContext {
+pub(crate) struct CostContext {
     pub tie_break: u64,
     pub tie_break_scale: u64,
     pub same_club: bool,
     pub rematch: bool,
+}
+
+pub(crate) struct BlossomV1CostCalculator<'a> {
+    request: &'a PairingRequest,
+}
+
+impl<'a> BlossomV1CostCalculator<'a> {
+    pub(crate) const fn new(request: &'a PairingRequest) -> Self {
+        Self { request }
+    }
+}
+
+impl super::edge_generation::PairingEdgeCostCalculator for BlossomV1CostCalculator<'_> {
+    fn match_cost(
+        &self,
+        first: &PairingEntrant,
+        second: &PairingEntrant,
+        context: CostContext,
+    ) -> Result<(PairingCost, PairingCostBreakdown), BlossomPairingError> {
+        match_cost(self.request, first, second, context)
+    }
+
+    fn bye_cost(
+        &self,
+        entrant: &PairingEntrant,
+        tie_break: u64,
+        tie_break_scale: u64,
+    ) -> Result<(PairingCost, PairingCostBreakdown), BlossomPairingError> {
+        bye_cost(self.request, entrant, tie_break, tie_break_scale)
+    }
 }
 
 pub(super) fn match_cost(
@@ -124,7 +154,7 @@ fn weighted(
         .ok_or(BlossomPairingError::PairingCostOverflow { component })
 }
 
-fn finish_cost(
+pub(crate) fn finish_cost(
     mut breakdown: PairingCostBreakdown,
     tie_break_scale: u64,
 ) -> Result<(PairingCost, PairingCostBreakdown), BlossomPairingError> {

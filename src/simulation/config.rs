@@ -1,4 +1,4 @@
-use crate::pairing::algorithms::blossom_v1::BlossomV1Policy;
+use crate::pairing::algorithms::blossom_v2::BlossomV2Policy;
 use crate::results::MatchFormat;
 use crate::tournament::{TableCount, TournamentId};
 
@@ -20,7 +20,7 @@ pub struct SimulationConfig {
     pub round_count: u16,
     pub match_format: MatchFormat,
     pub entrant_pattern: SimulationEntrantPattern,
-    pub pairing_policy: BlossomV1Policy,
+    pub pairing_policy: BlossomV2Policy,
     pub random_seed: u64,
 }
 
@@ -35,7 +35,7 @@ impl SimulationConfig {
             round_count: 5,
             match_format: MatchFormat::BestOfFive,
             entrant_pattern: SimulationEntrantPattern::Varied,
-            pairing_policy: BlossomV1Policy::default(),
+            pairing_policy: BlossomV2Policy::default(),
             random_seed: 0x5eed,
         }
     }
@@ -83,9 +83,9 @@ pub fn standard_scenarios() -> Vec<SimulationConfig> {
             club_count: 4,
             round_count: 4,
             match_format: MatchFormat::BestOfThree,
-            pairing_policy: BlossomV1Policy {
+            pairing_policy: BlossomV2Policy {
                 recent_rematch_window: 10,
-                ..BlossomV1Policy::default()
+                ..BlossomV2Policy::default()
             },
             random_seed: 0x1e,
             ..baseline.clone()

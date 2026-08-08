@@ -1,6 +1,7 @@
 use crate::identity::{ClubId, EntrantId};
 use crate::pairing::EloRating;
-use crate::pairing::algorithms::blossom_v1::BlossomV1Policy;
+use crate::pairing::algorithms::blossom_v1::{BlossomV1Policy, PairingPolicyVersion};
+use crate::pairing::algorithms::blossom_v2::BlossomV2Policy;
 use crate::results::{GameScore, MatchFormat, MatchSide};
 use crate::tournament::{MaximumRoundCount, TableCount, Tournament, TournamentId};
 
@@ -135,6 +136,71 @@ fn public_workflow_publishes_results_and_updates_complete_standings() {
             && standing.games_won + standing.games_lost == 2
             && standing.points_won > 0
     }));
+}
+
+#[test]
+fn simulation_trace_retains_pairing_graphs_results_and_standing_totals() {
+    let application = completed_one_round(MatchFormat::BestOfThree, two_one());
+
+    let trace = application.simulation_trace().unwrap();
+    let round = &trace.completed_rounds[0];
+
+    assert_eq!(trace.schema_version, 2);
+    assert_eq!(trace.simulation.run_seed, None);
+    assert_eq!(trace.tournament.match_format, "best_of_three");
+    assert_eq!(round.pairing.request.round_number, 1);
+    assert_eq!(round.pairing.request.entrants.len(), 4);
+    assert_eq!(round.pairing.relaxation_graphs.len(), 3);
+    assert_eq!(
+        round
+            .pairing
+            .relaxation_graphs
+            .iter()
+            .flat_map(|graph| &graph.edges)
+            .filter(|edge| edge.selected)
+            .count(),
+        2
+    );
+    assert_eq!(round.results.len(), 2);
+    assert!(round.results.iter().all(|result| {
+        result.games.len() == 3
+            && result.home_games_won == 2
+            && result.away_games_won == 1
+            && result.revision == 1
+    }));
+    let after = round.standings_after_round.as_ref().unwrap();
+    assert!(after.iter().all(|standing| {
+        standing.matches_played == 1
+            && standing.games_won + standing.games_lost == 3
+            && standing.points_won + standing.points_lost > 0
+    }));
+    assert_eq!(trace.current_standings, *after);
+
+    let seeded_trace = application.simulation_trace_with_result_seed(42).unwrap();
+    assert_eq!(seeded_trace.simulation.run_seed, Some(42));
+    assert_eq!(
+        seeded_trace.simulation.result_generator.as_deref(),
+        Some("elo_match_outcome_with_generated_games_v2")
+    );
+}
+
+#[test]
+fn application_and_trace_preserve_the_selected_v2_policy() {
+    let mut application = application(MatchFormat::BestOfThree, 4);
+    application.start_tournament().unwrap();
+
+    let proposal = application
+        .calculate_pairings(BlossomV2Policy::default())
+        .unwrap();
+    let trace = application.simulation_trace().unwrap();
+    let policy = &trace.pending_pairing.unwrap().request.policy;
+
+    assert_eq!(proposal.policy_version, PairingPolicyVersion::BlossomV2);
+    assert_eq!(policy.version, "blossom_v2");
+    assert_eq!(policy.match_win_weight, None);
+    assert_eq!(policy.match_record_weight, Some(1_000_000_000));
+    assert_eq!(policy.elo_difference_weight, None);
+    assert_eq!(policy.squared_elo_difference_weight, Some(10));
 }
 
 #[test]
