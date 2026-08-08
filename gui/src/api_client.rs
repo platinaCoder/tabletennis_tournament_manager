@@ -1,8 +1,8 @@
 use tabletennis_tournament::api_contract::{
     AuthenticationView, CreateTournamentRequest, DeleteTournamentRequest, DeleteTournamentResponse,
-    RecordMatchResultRequest, ReplaceRosterRequest, ShareTournamentRequest,
-    TournamentMutationRequest, TournamentSharingView, TournamentSummaryView, TournamentView,
-    UpdateTournamentMemberRequest,
+    ReceivedTournamentInvitationView, RecordMatchResultRequest, ReplaceRosterRequest,
+    ShareTournamentRequest, TournamentInvitationDecisionView, TournamentMutationRequest,
+    TournamentSharingView, TournamentSummaryView, TournamentView, UpdateTournamentMemberRequest,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -18,6 +18,28 @@ pub async fn logout() -> Result<(), String> {
 
 pub async fn list_tournaments() -> Result<Vec<TournamentSummaryView>, String> {
     get_json("/api/tournaments").await
+}
+
+pub async fn list_received_invitations() -> Result<Vec<ReceivedTournamentInvitationView>, String> {
+    get_json("/api/tournament-invitations").await
+}
+
+pub async fn accept_invitation(id: &str) -> Result<TournamentInvitationDecisionView, String> {
+    send_json(
+        "POST",
+        &format!("/api/tournament-invitations/{id}/accept"),
+        &(),
+    )
+    .await
+}
+
+pub async fn decline_invitation(id: &str) -> Result<TournamentInvitationDecisionView, String> {
+    send_json(
+        "POST",
+        &format!("/api/tournament-invitations/{id}/decline"),
+        &(),
+    )
+    .await
 }
 
 pub async fn create_tournament(

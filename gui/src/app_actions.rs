@@ -8,7 +8,7 @@ use tabletennis_tournament::simulation::simulate_match_games;
 
 use crate::app::App;
 use crate::components::SubmittedResult;
-use crate::model::RosterEntryCommand;
+use crate::model::{RosterEntryCommand, WorkspacePage};
 
 impl App {
     pub(crate) fn roster_request(
@@ -49,6 +49,7 @@ impl App {
         self.tournament_record_id = Some(view.id);
         self.tournament_revision = Some(view.revision);
         self.tournament_access_role = Some(view.access_role);
+        self.page = WorkspacePage::Tournament;
         self.application = Some(
             TournamentApplication::restore(view.application).map_err(|error| error.to_string())?,
         );

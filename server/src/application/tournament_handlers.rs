@@ -14,6 +14,7 @@ use crate::backend::server::error::ApiError;
 use crate::tournament::{MaximumRoundCount, TableCount, TournamentId};
 
 use super::TournamentService;
+use super::tournament_invitation_handlers as invitations;
 use super::tournament_sharing_handlers as sharing;
 use super::tournament_workflow_handlers as workflow;
 
@@ -32,6 +33,15 @@ impl TournamentApiState {
 pub fn routes(state: TournamentApiState) -> Router {
     Router::new()
         .route("/api/tournaments", get(list).post(create))
+        .route("/api/tournament-invitations", get(invitations::list))
+        .route(
+            "/api/tournament-invitations/{invitation_id}/accept",
+            post(invitations::accept),
+        )
+        .route(
+            "/api/tournament-invitations/{invitation_id}/decline",
+            post(invitations::decline),
+        )
         .route(
             "/api/tournaments/{tournament_id}",
             get(load).delete(delete_tournament),

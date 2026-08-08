@@ -57,11 +57,51 @@ td small {
   margin-bottom: 1.25rem;
 }
 
+.invitation-inbox {
+  margin-bottom: 1.25rem;
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.invitation-list {
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 1rem;
+}
+
+.invitation-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.7rem;
+  background: var(--card);
+}
+
+.invitation-row p {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.invitation-actions {
+  display: flex;
+  gap: 0.55rem;
+  flex-shrink: 0;
+}
+
 .tournament-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 0.9rem;
   margin-top: 1.25rem;
+}
+
+.dashboard-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
 }
 
 .tournament-dashboard-card {
@@ -172,8 +212,20 @@ td small {
 }
 
 @media (max-width: 650px) {
+  .dashboard-heading-actions {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
   .sharing-row {
     grid-template-columns: 1fr;
+  }
+
+  .invitation-row,
+  .invitation-actions {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .read-only-notice {

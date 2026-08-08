@@ -14,6 +14,8 @@ pub enum TournamentRepositoryError {
     MemberNotFound,
     #[error("the tournament invitation was not found")]
     InvitationNotFound,
+    #[error("the invited user already has tournament access")]
+    AlreadyMember,
 }
 
 impl From<crate::application::TournamentSnapshotError> for TournamentRepositoryError {

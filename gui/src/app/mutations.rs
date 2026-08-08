@@ -25,9 +25,7 @@ impl App {
             Ok(view) if view.authenticated => {
                 if let Some(user) = view.user {
                     self.authentication = AuthenticationState::SignedIn(user);
-                    context.link().send_future(async {
-                        Msg::TournamentListLoaded(crate::api_client::list_tournaments().await)
-                    });
+                    self.refresh_dashboard(context);
                 } else {
                     self.authentication = AuthenticationState::Error(
                         "The server returned an incomplete authentication response.".to_owned(),

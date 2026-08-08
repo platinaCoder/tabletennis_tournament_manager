@@ -9,6 +9,7 @@ use crate::model::CreateTournamentCommand;
 #[derive(Properties, PartialEq)]
 pub struct TournamentSetupProps {
     pub on_create: Callback<CreateTournamentCommand>,
+    pub on_cancel: Callback<()>,
 }
 
 #[component]
@@ -20,6 +21,10 @@ pub fn TournamentSetup(props: &TournamentSetupProps) -> Html {
     let maximum_round_count = use_state(|| "5".to_owned());
     let match_format = use_state(|| MatchFormat::BestOfFive);
     let match_format_select = use_node_ref();
+    let cancel = {
+        let callback = props.on_cancel.clone();
+        Callback::from(move |_| callback.emit(()))
+    };
 
     let onsubmit = {
         let tournament_id = tournament_id.clone();
@@ -60,8 +65,15 @@ pub fn TournamentSetup(props: &TournamentSetupProps) -> Html {
 
     html! {
         <section class="panel setup-panel">
-            <p class="eyebrow">{language.text(Text::TournamentSetup)}</p>
-            <h2>{language.text(Text::CreateTournament)}</h2>
+            <div class="section-heading">
+                <div>
+                    <p class="eyebrow">{language.text(Text::TournamentSetup)}</p>
+                    <h2>{language.text(Text::CreateTournament)}</h2>
+                </div>
+                <button class="secondary compact" type="button" onclick={cancel}>
+                    {back_label(language)}
+                </button>
+            </div>
             <p class="muted">
                 {language.setup_explanation()}
             </p>
@@ -99,6 +111,13 @@ pub fn TournamentSetup(props: &TournamentSetupProps) -> Html {
                 <button class="primary" type="submit">{language.text(Text::CreateTournament)}</button>
             </form>
         </section>
+    }
+}
+
+const fn back_label(language: crate::language::Language) -> &'static str {
+    match language {
+        crate::language::Language::English => "Back to dashboard",
+        crate::language::Language::Dutch => "Terug naar dashboard",
     }
 }
 

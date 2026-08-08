@@ -1,7 +1,8 @@
 use yew::prelude::*;
 
 use tabletennis_tournament::api_contract::{
-    AuthenticatedUserView, AuthenticationView, DeleteTournamentResponse, TournamentAccessRole,
+    AuthenticatedUserView, AuthenticationView, DeleteTournamentResponse,
+    ReceivedTournamentInvitationView, TournamentAccessRole, TournamentInvitationDecisionView,
     TournamentSharingView, TournamentSummaryView, TournamentView,
 };
 use tabletennis_tournament::application::TournamentApplication;
@@ -10,9 +11,10 @@ use tabletennis_tournament::tournament::TournamentState;
 use crate::components::{MemberRoleCommand, RosterEditor, ShareAccessCommand, SubmittedResult};
 use crate::formatting::match_format;
 use crate::language::{Language, Text};
-use crate::model::{CreateTournamentCommand, RosterEntryCommand};
+use crate::model::{CreateTournamentCommand, RosterEntryCommand, WorkspacePage};
 
 mod authentication_view;
+mod invitations;
 mod mutations;
 
 pub struct App {
@@ -20,8 +22,10 @@ pub struct App {
     pub(crate) tournament_record_id: Option<String>,
     pub(crate) tournament_revision: Option<u64>,
     pub(crate) tournament_access_role: Option<TournamentAccessRole>,
+    pub(crate) page: WorkspacePage,
     authentication: AuthenticationState,
     tournaments: Vec<TournamentSummaryView>,
+    received_invitations: Vec<ReceivedTournamentInvitationView>,
     sharing: Option<TournamentSharingView>,
     error: Option<String>,
     busy: bool,
@@ -45,6 +49,10 @@ enum AuthenticationState {
 pub enum Msg {
     SessionLoaded(Result<AuthenticationView, String>),
     TournamentListLoaded(Result<Vec<TournamentSummaryView>, String>),
+    InvitationListLoaded(Result<Vec<ReceivedTournamentInvitationView>, String>),
+    AcceptInvitation(String),
+    DeclineInvitation(String),
+    InvitationDecisionFinished(Result<TournamentInvitationDecisionView, String>),
     LoadTournament(String),
     OpenSharing(String),
     SharingLoaded(Result<TournamentSharingView, String>),
@@ -55,7 +63,8 @@ pub enum Msg {
     CloseSharing,
     DeleteTournament(String, u64),
     TournamentDeleted(Result<DeleteTournamentResponse, String>),
-    NewTournament,
+    ShowDashboard,
+    ShowCreateTournament,
     CreateTournament(CreateTournamentCommand),
     StartTournament(Vec<RosterEntryCommand>),
     SaveRoster(Vec<RosterEntryCommand>),
@@ -90,8 +99,10 @@ impl Component for App {
             tournament_record_id: None,
             tournament_revision: None,
             tournament_access_role: None,
+            page: WorkspacePage::Dashboard,
             authentication: AuthenticationState::Loading,
             tournaments: Vec::new(),
+            received_invitations: Vec::new(),
             sharing: None,
             error: None,
             busy: false,
@@ -112,6 +123,12 @@ impl Component for App {
                 Ok(tournaments) => self.tournaments = tournaments,
                 Err(error) => self.error = Some(error),
             },
+            Msg::InvitationListLoaded(result) => self.invitation_list_loaded(result),
+            Msg::AcceptInvitation(id) => self.decide_invitation(context, id, true),
+            Msg::DeclineInvitation(id) => self.decide_invitation(context, id, false),
+            Msg::InvitationDecisionFinished(result) => {
+                self.invitation_decision_finished(context, result)
+            }
             Msg::LoadTournament(id) => {
                 self.busy = true;
                 context.link().send_future(async move {
@@ -161,13 +178,26 @@ impl Component for App {
                     Err(error) => self.error = Some(error),
                 }
             }
-            Msg::NewTournament => {
+            Msg::ShowDashboard => {
                 self.application = None;
                 self.tournament_record_id = None;
                 self.tournament_revision = None;
                 self.tournament_access_role = None;
                 self.sharing = None;
+                self.roster_open = false;
                 self.error = None;
+                self.page = WorkspacePage::Dashboard;
+                self.refresh_dashboard(context);
+            }
+            Msg::ShowCreateTournament => {
+                self.application = None;
+                self.tournament_record_id = None;
+                self.tournament_revision = None;
+                self.tournament_access_role = None;
+                self.sharing = None;
+                self.roster_open = false;
+                self.error = None;
+                self.page = WorkspacePage::CreateTournament;
             }
             Msg::CreateTournament(command) => self.create_tournament(context, command),
             Msg::StartTournament(roster) => self.start_tournament(context, roster),
@@ -207,7 +237,9 @@ impl Component for App {
                         self.tournament_record_id = None;
                         self.tournament_revision = None;
                         self.tournament_access_role = None;
+                        self.page = WorkspacePage::Dashboard;
                         self.tournaments.clear();
+                        self.received_invitations.clear();
                         self.sharing = None;
                     }
                     Err(error) => self.error = Some(error),

@@ -182,10 +182,10 @@ const fn sharing_title(language: Language) -> &'static str {
 const fn sharing_explanation(language: Language) -> &'static str {
     match language {
         Language::English => {
-            "Editors can manage the tournament and enter results. Viewers have read-only access. If the account does not exist yet, access activates after that email signs in with Google."
+            "Editors can manage the tournament and enter results. Viewers have read-only access. The recipient must accept the invitation from their dashboard."
         }
         Language::Dutch => {
-            "Bewerkers kunnen het toernooi beheren en uitslagen invoeren. Lezers hebben alleen leestoegang. Als het account nog niet bestaat, wordt de toegang actief zodra dit e-mailadres met Google inlogt."
+            "Bewerkers kunnen het toernooi beheren en uitslagen invoeren. Lezers hebben alleen leestoegang. De ontvanger moet de uitnodiging via het dashboard accepteren."
         }
     }
 }
@@ -206,8 +206,8 @@ const fn permission_label(language: Language) -> &'static str {
 
 const fn grant_label(language: Language) -> &'static str {
     match language {
-        Language::English => "Grant access",
-        Language::Dutch => "Toegang geven",
+        Language::English => "Send invitation",
+        Language::Dutch => "Uitnodiging sturen",
     }
 }
 
@@ -220,15 +220,15 @@ const fn members_label(language: Language) -> &'static str {
 
 const fn pending_label(language: Language) -> &'static str {
     match language {
-        Language::English => "Pending access",
-        Language::Dutch => "Wachtende toegang",
+        Language::English => "Pending invitations",
+        Language::Dutch => "Openstaande uitnodigingen",
     }
 }
 
 const fn pending_explanation(language: Language) -> &'static str {
     match language {
-        Language::English => "Activates when this address signs in",
-        Language::Dutch => "Wordt actief wanneer dit adres inlogt",
+        Language::English => "Waiting for the recipient to accept",
+        Language::Dutch => "Wacht op acceptatie door de ontvanger",
     }
 }
 

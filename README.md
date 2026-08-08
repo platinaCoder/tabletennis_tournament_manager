@@ -150,10 +150,11 @@ viewer -> view only
 ```
 
 The creator receives the permanent owner membership. Owner access cannot be
-downgraded or removed. Sharing uses the recipient's verified Google email. If
-that application user already exists, membership is immediate; otherwise a
-pending access record is claimed when that email next signs in and loads the
-dashboard. The application does not send invitation email in this version.
+downgraded or removed. Sharing uses the recipient's verified Google email and
+always creates a pending invitation. The recipient must explicitly accept or
+decline it at the top of the dashboard. Invitations also appear on the first
+login of an account that did not exist when it was invited. The application
+does not send invitation email in this version.
 
 Deleting a tournament is owner-only, revision-checked and permanent. PostgreSQL
 foreign-key cascades remove its memberships, invitations, entrants, rounds,
@@ -169,6 +170,9 @@ The dashboard API routes are:
 ```text
 GET    /api/tournaments
 POST   /api/tournaments
+GET    /api/tournament-invitations
+POST   /api/tournament-invitations/{invitation_id}/accept
+POST   /api/tournament-invitations/{invitation_id}/decline
 GET    /api/tournaments/{id}
 DELETE /api/tournaments/{id}
 GET    /api/tournaments/{id}/sharing

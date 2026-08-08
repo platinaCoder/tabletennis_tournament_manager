@@ -75,6 +75,22 @@ pub struct TournamentInvitationView {
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct ReceivedTournamentInvitationView {
+    pub id: String,
+    pub tournament_id: String,
+    pub tournament_title: String,
+    pub role: TournamentAccessRole,
+    pub invited_by_email: String,
+    pub invited_by_display_name: Option<String>,
+    pub created_at: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct TournamentInvitationDecisionView {
+    pub accepted: bool,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct TournamentSharingView {
     pub tournament_id: String,
     pub members: Vec<TournamentMemberView>,

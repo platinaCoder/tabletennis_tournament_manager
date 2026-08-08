@@ -6,6 +6,7 @@ use crate::language::{Language, use_language};
 #[derive(Properties, PartialEq)]
 pub struct TournamentDashboardProps {
     pub tournaments: Vec<TournamentSummaryView>,
+    pub on_create: Callback<()>,
     pub on_open: Callback<String>,
     pub on_delete: Callback<(String, u64)>,
     pub on_share: Callback<String>,
@@ -15,6 +16,10 @@ pub struct TournamentDashboardProps {
 pub fn TournamentDashboard(props: &TournamentDashboardProps) -> Html {
     let language = use_language();
     let confirming_delete = use_state(|| None::<String>);
+    let create = {
+        let callback = props.on_create.clone();
+        Callback::from(move |_| callback.emit(()))
+    };
 
     html! {
         <section class="panel tournament-dashboard">
@@ -23,7 +28,10 @@ pub fn TournamentDashboard(props: &TournamentDashboardProps) -> Html {
                     <p class="eyebrow">{dashboard_eyebrow(language)}</p>
                     <h2>{dashboard_title(language)}</h2>
                 </div>
-                <span class="muted">{tournament_count(props.tournaments.len(), language)}</span>
+                <div class="dashboard-heading-actions">
+                    <span class="muted">{tournament_count(props.tournaments.len(), language)}</span>
+                    <button class="primary" onclick={create}>{create_label(language)}</button>
+                </div>
             </div>
             if props.tournaments.is_empty() {
                 <p class="dashboard-empty muted">{empty_dashboard(language)}</p>
@@ -165,8 +173,15 @@ const fn dashboard_title(language: Language) -> &'static str {
 
 const fn empty_dashboard(language: Language) -> &'static str {
     match language {
-        Language::English => "No tournaments yet. Create your first tournament below.",
-        Language::Dutch => "Nog geen toernooien. Maak hieronder je eerste toernooi aan.",
+        Language::English => "No tournaments yet. Create your first tournament to get started.",
+        Language::Dutch => "Nog geen toernooien. Maak je eerste toernooi aan om te beginnen.",
+    }
+}
+
+const fn create_label(language: Language) -> &'static str {
+    match language {
+        Language::English => "Create tournament",
+        Language::Dutch => "Toernooi aanmaken",
     }
 }
 

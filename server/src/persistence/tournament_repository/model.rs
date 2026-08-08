@@ -44,6 +44,16 @@ pub struct TournamentInvitation {
     pub created_at: DateTime<Utc>,
 }
 
+pub struct ReceivedTournamentInvitation {
+    pub id: Uuid,
+    pub tournament_id: Uuid,
+    pub tournament_title: String,
+    pub role: TournamentAccessRole,
+    pub invited_by_email: String,
+    pub invited_by_display_name: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
+
 pub struct TournamentSharing {
     pub members: Vec<TournamentMember>,
     pub invitations: Vec<TournamentInvitation>,

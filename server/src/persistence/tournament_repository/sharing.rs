@@ -80,72 +80,37 @@ impl TournamentRepository {
     ) -> Result<(), TournamentRepositoryError> {
         let email = normalize_email(email);
         let mut transaction = self.pool.begin().await?;
-        let existing_user = query::<Postgres>(
-            "SELECT id FROM users
-             WHERE LOWER(email) = $1
-             ORDER BY created_at, id
-             LIMIT 1",
+        let existing_member = query::<Postgres>(
+            "SELECT 1
+             FROM tournament_members AS member
+             JOIN users AS app_user ON app_user.id = member.user_id
+             WHERE member.tournament_id = $1 AND LOWER(app_user.email) = $2",
         )
+        .bind(tournament_id)
         .bind(&email)
         .fetch_optional(&mut *transaction)
         .await?;
-        if let Some(row) = existing_user {
-            let user_id: Uuid = row.try_get("id")?;
-            let owner = query::<Postgres>(
-                "SELECT 1 FROM tournament_members
-                 WHERE tournament_id = $1 AND user_id = $2 AND role = 'owner'",
-            )
-            .bind(tournament_id)
-            .bind(user_id)
-            .fetch_optional(&mut *transaction)
-            .await?
-            .is_some();
-            if owner {
-                return Err(TournamentRepositoryError::OwnerRoleImmutable);
-            }
-            query::<Postgres>(
-                "INSERT INTO tournament_members (
-                    tournament_id, user_id, role, created_at, updated_at
-                 ) VALUES ($1, $2, $3, $4, $4)
-                 ON CONFLICT (tournament_id, user_id) DO UPDATE SET
-                    role = EXCLUDED.role,
-                    updated_at = EXCLUDED.updated_at
-                 WHERE tournament_members.role <> 'owner'",
-            )
-            .bind(tournament_id)
-            .bind(user_id)
-            .bind(access_role_name(role))
-            .bind(now)
-            .execute(&mut *transaction)
-            .await?;
-            query::<Postgres>(
-                "DELETE FROM tournament_invitations
-                 WHERE tournament_id = $1 AND invited_email = $2",
-            )
-            .bind(tournament_id)
-            .bind(email)
-            .execute(&mut *transaction)
-            .await?;
-        } else {
-            query::<Postgres>(
-                "INSERT INTO tournament_invitations (
-                    id, tournament_id, invited_email, role, invited_by_user_id,
-                    created_at, updated_at
-                 ) VALUES ($1, $2, $3, $4, $5, $6, $6)
-                 ON CONFLICT (tournament_id, invited_email) DO UPDATE SET
-                    role = EXCLUDED.role,
-                    invited_by_user_id = EXCLUDED.invited_by_user_id,
-                    updated_at = EXCLUDED.updated_at",
-            )
-            .bind(Uuid::new_v4())
-            .bind(tournament_id)
-            .bind(email)
-            .bind(access_role_name(role))
-            .bind(invited_by_user_id.as_uuid())
-            .bind(now)
-            .execute(&mut *transaction)
-            .await?;
+        if existing_member.is_some() {
+            return Err(TournamentRepositoryError::AlreadyMember);
         }
+        query::<Postgres>(
+            "INSERT INTO tournament_invitations (
+                id, tournament_id, invited_email, role, invited_by_user_id,
+                created_at, updated_at
+             ) VALUES ($1, $2, $3, $4, $5, $6, $6)
+             ON CONFLICT (tournament_id, invited_email) DO UPDATE SET
+                role = EXCLUDED.role,
+                invited_by_user_id = EXCLUDED.invited_by_user_id,
+                updated_at = EXCLUDED.updated_at",
+        )
+        .bind(Uuid::new_v4())
+        .bind(tournament_id)
+        .bind(email)
+        .bind(access_role_name(role))
+        .bind(invited_by_user_id.as_uuid())
+        .bind(now)
+        .execute(&mut *transaction)
+        .await?;
         transaction.commit().await?;
         Ok(())
     }

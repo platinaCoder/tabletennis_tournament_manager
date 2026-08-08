@@ -1,5 +1,12 @@
 use tabletennis_tournament::results::MatchFormat;
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum WorkspacePage {
+    Dashboard,
+    CreateTournament,
+    Tournament,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CreateTournamentCommand {
     pub tournament_id: String,

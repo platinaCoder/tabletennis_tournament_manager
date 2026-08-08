@@ -23,10 +23,6 @@ impl TournamentService {
 
     pub async fn list(&self, user: &AuthenticatedUser) -> Result<Vec<TournamentSummary>, ApiError> {
         self.repository
-            .claim_invitations(user, Utc::now())
-            .await
-            .map_err(repository_error)?;
-        self.repository
             .list_for_user(user.user_id)
             .await
             .map_err(repository_error)
@@ -141,6 +137,10 @@ pub(super) fn repository_error(error: TournamentRepositoryError) -> ApiError {
         ),
         TournamentRepositoryError::MemberNotFound
         | TournamentRepositoryError::InvitationNotFound => ApiError::NotFound,
+        TournamentRepositoryError::AlreadyMember => ApiError::invalid(
+            "tournament_member_already_exists",
+            "That account already has access to this tournament.",
+        ),
         TournamentRepositoryError::Database(error) => ApiError::Database(error),
         TournamentRepositoryError::InvalidPairingJson(_)
         | TournamentRepositoryError::InvalidStoredData(_) => {

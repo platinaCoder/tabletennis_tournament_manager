@@ -135,7 +135,7 @@ async fn tournament_entrants_rounds_matches_and_games_round_trip() {
 
 #[tokio::test]
 #[ignore = "requires an isolated TEST_DATABASE_URL PostgreSQL database"]
-async fn sharing_roles_pending_access_and_cascading_deletion_are_persisted() {
+async fn sharing_invitations_require_one_time_recipient_decisions() {
     let database_url = std::env::var("TEST_DATABASE_URL").unwrap();
     let pool = PgPoolOptions::new()
         .max_connections(2)
@@ -191,33 +191,63 @@ async fn sharing_roles_pending_access_and_cascading_deletion_are_persisted() {
     );
     assert_eq!(
         repository.access_role(stored.id, editor_id).await.unwrap(),
-        Some(TournamentAccessRole::Editor)
+        None
     );
     let sharing = repository.sharing(stored.id).await.unwrap();
-    assert_eq!(sharing.members.len(), 2);
-    assert_eq!(sharing.invitations.len(), 1);
-    assert_eq!(sharing.invitations[0].email, viewer_email);
+    assert_eq!(sharing.members.len(), 1);
+    assert_eq!(sharing.invitations.len(), 2);
+
+    let editor = AuthenticatedUser {
+        user_id: editor_id,
+        email: editor_email,
+        display_name: Some("Editor".to_owned()),
+        avatar_url: None,
+    };
+    let editor_invitations = repository.received_invitations(&editor).await.unwrap();
+    assert_eq!(editor_invitations.len(), 1);
+    assert_eq!(editor_invitations[0].tournament_id, stored.id);
+    assert_eq!(editor_invitations[0].role, TournamentAccessRole::Editor);
+    repository
+        .accept_invitation(&editor, editor_invitations[0].id, Utc::now())
+        .await
+        .unwrap();
+    assert_eq!(
+        repository.access_role(stored.id, editor_id).await.unwrap(),
+        Some(TournamentAccessRole::Editor)
+    );
+    assert!(
+        repository
+            .accept_invitation(&editor, editor_invitations[0].id, Utc::now())
+            .await
+            .is_err()
+    );
 
     insert_user(&pool, viewer_id, &viewer_email).await;
+    let viewer = AuthenticatedUser {
+        user_id: viewer_id,
+        email: viewer_email,
+        display_name: Some("Viewer".to_owned()),
+        avatar_url: None,
+    };
+    let viewer_invitations = repository.received_invitations(&viewer).await.unwrap();
+    assert_eq!(viewer_invitations.len(), 1);
     repository
-        .claim_invitations(
-            &AuthenticatedUser {
-                user_id: viewer_id,
-                email: viewer_email,
-                display_name: Some("Viewer".to_owned()),
-                avatar_url: None,
-            },
-            Utc::now(),
-        )
+        .decline_invitation(&viewer, viewer_invitations[0].id)
         .await
         .unwrap();
     assert_eq!(
         repository.access_role(stored.id, viewer_id).await.unwrap(),
-        Some(TournamentAccessRole::Viewer)
+        None
     );
-    let claimed_sharing = repository.sharing(stored.id).await.unwrap();
-    assert_eq!(claimed_sharing.members.len(), 3);
-    assert!(claimed_sharing.invitations.is_empty());
+    assert!(
+        repository
+            .decline_invitation(&viewer, viewer_invitations[0].id)
+            .await
+            .is_err()
+    );
+    let decided_sharing = repository.sharing(stored.id).await.unwrap();
+    assert_eq!(decided_sharing.members.len(), 2);
+    assert!(decided_sharing.invitations.is_empty());
 
     repository.delete(stored.id, 0).await.unwrap();
     let child_count: i64 = query::<sqlx_postgres::Postgres>(

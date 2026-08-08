@@ -1,44 +1,14 @@
-use chrono::{DateTime, Utc};
 use sqlx::query::query;
 use sqlx::row::Row;
 use sqlx_postgres::Postgres;
 use uuid::Uuid;
 
 use crate::api_contract::TournamentAccessRole;
-use crate::backend::auth::{AuthenticatedUser, UserId};
+use crate::backend::auth::UserId;
 
 use super::{TournamentRepository, TournamentRepositoryError, TournamentSummary};
 
 impl TournamentRepository {
-    pub async fn claim_invitations(
-        &self,
-        user: &AuthenticatedUser,
-        now: DateTime<Utc>,
-    ) -> Result<(), TournamentRepositoryError> {
-        let normalized_email = normalize_email(&user.email);
-        let mut transaction = self.pool.begin().await?;
-        query::<Postgres>(
-            "INSERT INTO tournament_members (
-                tournament_id, user_id, role, created_at, updated_at
-             )
-             SELECT tournament_id, $1, role, $3, $3
-             FROM tournament_invitations
-             WHERE invited_email = $2
-             ON CONFLICT (tournament_id, user_id) DO NOTHING",
-        )
-        .bind(user.user_id.as_uuid())
-        .bind(&normalized_email)
-        .bind(now)
-        .execute(&mut *transaction)
-        .await?;
-        query::<Postgres>("DELETE FROM tournament_invitations WHERE invited_email = $1")
-            .bind(normalized_email)
-            .execute(&mut *transaction)
-            .await?;
-        transaction.commit().await?;
-        Ok(())
-    }
-
     pub async fn access_role(
         &self,
         tournament_id: Uuid,
