@@ -83,6 +83,18 @@ tokens are not stored.
 
 ## Local development
 
+On NixOS, enter the committed development shell before starting Vercel. The
+shell exposes Nix-compatible Rust tools, including the `rustup` command checked
+by Vercel's local Rust builder:
+
+```bash
+nix-shell
+npx vercel dev --listen 3000
+```
+
+After changing `shell.nix`, leave and re-enter the shell so its updated `PATH`
+is active.
+
 Install Trunk, the WASM target and Vercel CLI, then link the project if needed:
 
 ```bash

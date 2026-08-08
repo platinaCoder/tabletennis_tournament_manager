@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "regions": ["fra1"],
   "installCommand": "mkdir -p \"$HOME/.local/bin\" && /rust/bin/rustup target add wasm32-unknown-unknown && curl --proto '=https' --tlsv1.2 -fsSL https://github.com/trunk-rs/trunk/releases/download/v0.21.14/trunk-x86_64-unknown-linux-musl.tar.gz | tar -xz -C \"$HOME/.local/bin\"",
-  "buildCommand": "cd gui && PATH=\"/rust/bin:$HOME/.local/bin:$PATH\" trunk build --release",
+  "buildCommand": "cd gui && env -u NO_COLOR PATH=\"/rust/bin:$HOME/.local/bin:$PATH\" trunk build --release",
   "outputDirectory": "gui/dist",
   "rewrites": [
     {
