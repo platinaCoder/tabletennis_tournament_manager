@@ -4,6 +4,7 @@ use crate::identity::EntrantId;
 use crate::pairing::algorithms::PairingSnapshot;
 use crate::pairing::algorithms::blossom_v1::PairingProposal;
 use crate::results::MatchFormat;
+use crate::results::MatchResult;
 use crate::tournament::{MaximumRoundCount, TableCount, Tournament, TournamentState};
 
 use super::standings::calculate_standings;
@@ -75,6 +76,17 @@ impl TournamentApplication {
 
     pub fn completed_rounds(&self) -> &[CompletedRound] {
         &self.completed_rounds
+    }
+
+    pub fn match_result(&self, match_id: &crate::identity::MatchId) -> Option<&MatchResult> {
+        self.active_round
+            .as_ref()
+            .and_then(|round| find_result(&round.results, match_id))
+            .or_else(|| {
+                self.completed_rounds
+                    .iter()
+                    .find_map(|round| find_result(&round.results, match_id))
+            })
     }
 
     pub fn pending_pairing(&self) -> Option<&PairingProposal> {
@@ -207,6 +219,13 @@ impl TournamentApplication {
             Ok(self.standings.clone())
         }
     }
+}
+
+fn find_result<'a>(
+    results: &'a [MatchResult],
+    match_id: &crate::identity::MatchId,
+) -> Option<&'a MatchResult> {
+    results.iter().find(|result| result.match_id() == match_id)
 }
 
 pub(super) struct PendingPairing {

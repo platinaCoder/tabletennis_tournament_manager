@@ -95,11 +95,11 @@ async fn tournament_entrants_rounds_matches_and_games_round_trip() {
         .iter()
         .map(|scheduled| scheduled.match_id.clone())
         .collect::<Vec<_>>();
-    for match_id in match_ids {
+    for match_id in &match_ids {
         stored
             .application
             .enter_match_result(
-                &match_id,
+                match_id,
                 vec![
                     GameScore::new(1, 11, 7).unwrap(),
                     GameScore::new(2, 12, 10).unwrap(),
@@ -109,23 +109,78 @@ async fn tournament_entrants_rounds_matches_and_games_round_trip() {
     }
     stored.application.complete_round().unwrap();
     stored.revision = repository.save(&stored, 0, Utc::now()).await.unwrap();
-
-    let loaded = repository.load(stored.id).await.unwrap().unwrap();
-    assert_eq!(loaded.application.snapshot(), stored.application.snapshot());
-    assert_eq!(loaded.revision, 1);
-    assert_eq!(loaded.application.completed_rounds()[0].results.len(), 2);
-    assert_eq!(
-        loaded.application.completed_rounds()[0].results[0].games()[1]
-            .home_points
-            .value(),
-        12
-    );
-
-    query::<sqlx_postgres::Postgres>("DELETE FROM tournaments WHERE id = $1")
-        .bind(stored.id)
-        .execute(&pool)
+    stored
+        .application
+        .correct_match_result(
+            &match_ids[0],
+            vec![
+                GameScore::new(1, 11, 7).unwrap(),
+                GameScore::new(2, 8, 11).unwrap(),
+                GameScore::new(3, 14, 12).unwrap(),
+            ],
+            Some("Second game was entered incorrectly".to_owned()),
+        )
+        .unwrap();
+    stored.revision = repository
+        .save(&stored, stored.revision, Utc::now())
         .await
         .unwrap();
+
+    let loaded = repository.load(stored.id).await.unwrap().unwrap();
+    let loaded_snapshot = loaded.application.snapshot();
+    let stored_snapshot = stored.application.snapshot();
+    assert_eq!(loaded_snapshot.tournament, stored_snapshot.tournament);
+    assert_eq!(loaded_snapshot.entrants, stored_snapshot.entrants);
+    assert_eq!(
+        loaded_snapshot.active_entrant_ids,
+        stored_snapshot.active_entrant_ids
+    );
+    assert_eq!(loaded.revision, 2);
+    assert_eq!(loaded.application.completed_rounds()[0].results.len(), 2);
+    let corrected = loaded.application.match_result(&match_ids[0]).unwrap();
+    assert_eq!(corrected.revision().value(), 2);
+    assert_eq!(
+        corrected.correction_reason(),
+        Some("Second game was entered incorrectly")
+    );
+    assert_eq!(corrected.games()[2].home_points.value(), 14);
+
+    let revision_rows = query::<sqlx_postgres::Postgres>(
+        "SELECT result.revision, result.correction_reason,
+                COUNT(game.game_number) AS game_count
+         FROM match_result_revisions AS result
+         JOIN matches AS scheduled ON scheduled.id = result.match_id
+         JOIN game_scores AS game
+           ON game.match_id = result.match_id
+          AND game.result_revision = result.revision
+         WHERE scheduled.tournament_id = $1 AND scheduled.match_id = $2
+         GROUP BY result.revision, result.correction_reason
+         ORDER BY result.revision",
+    )
+    .bind(stored.id)
+    .bind(match_ids[0].as_str())
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(revision_rows.len(), 2);
+    assert_eq!(revision_rows[0].try_get::<i64, _>("revision").unwrap(), 1);
+    assert_eq!(revision_rows[0].try_get::<i64, _>("game_count").unwrap(), 2);
+    assert_eq!(revision_rows[1].try_get::<i64, _>("revision").unwrap(), 2);
+    assert_eq!(revision_rows[1].try_get::<i64, _>("game_count").unwrap(), 3);
+    assert_eq!(
+        revision_rows[1]
+            .try_get::<String, _>("correction_reason")
+            .unwrap(),
+        "Second game was entered incorrectly"
+    );
+
+    assert!(matches!(
+        repository.delete(stored.id, loaded.revision - 1).await,
+        Err(super::TournamentRepositoryError::RevisionConflict)
+    ));
+    assert!(repository.load(stored.id).await.unwrap().is_some());
+    repository.delete(stored.id, loaded.revision).await.unwrap();
+    assert!(repository.load(stored.id).await.unwrap().is_none());
     query::<sqlx_postgres::Postgres>("DELETE FROM users WHERE id = $1")
         .bind(user_id.as_uuid())
         .execute(&pool)

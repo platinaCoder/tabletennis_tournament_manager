@@ -85,6 +85,21 @@ impl Language {
             MatchResultError::RoundNotActive => {
                 "wedstrijd hoort niet bij de actieve ronde".to_owned()
             }
+            MatchResultError::ResultDoesNotBelongToMatch => {
+                "de bestaande uitslag hoort bij een andere wedstrijd".to_owned()
+            }
+            MatchResultError::CorrectionReasonTooLong { maximum } => {
+                format!("de reden voor correctie mag maximaal {maximum} bytes bevatten")
+            }
+            MatchResultError::UnexpectedCorrectionReason => {
+                "een eerste uitslag kan geen reden voor correctie bevatten".to_owned()
+            }
+            MatchResultError::CorrectionTimestampRequired => {
+                "een gecorrigeerde uitslag vereist een correctietijdstip".to_owned()
+            }
+            MatchResultError::MatchResultRevisionOverflow => {
+                "de uitslagrevisie overschrijdt de ondersteunde limiet".to_owned()
+            }
         }
     }
 

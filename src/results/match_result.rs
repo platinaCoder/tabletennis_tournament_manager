@@ -6,6 +6,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::platform_time::system_time_now;
 
+use super::match_correction::validate_restored_audit_metadata;
+
 use super::{
     EntrantId, GameScore, MatchFormat, MatchId, MatchPublicationStatus, MatchSide, RoundActivity,
     ScheduledMatch,
@@ -90,14 +92,16 @@ impl Error for MatchResultRevisionError {}
 /// A completed match whose summary fields are derived from its games.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct MatchResult {
-    match_id: MatchId,
-    games: Vec<GameScore>,
-    home_games_won: GamesWon,
-    away_games_won: GamesWon,
-    winner_id: EntrantId,
-    entered_at: SystemTime,
-    corrected_at: Option<SystemTime>,
-    revision: MatchResultRevision,
+    pub(super) match_id: MatchId,
+    pub(super) games: Vec<GameScore>,
+    pub(super) home_games_won: GamesWon,
+    pub(super) away_games_won: GamesWon,
+    pub(super) winner_id: EntrantId,
+    pub(super) entered_at: SystemTime,
+    pub(super) corrected_at: Option<SystemTime>,
+    pub(super) revision: MatchResultRevision,
+    #[serde(default)]
+    pub(super) correction_reason: Option<String>,
 }
 
 impl MatchResult {
@@ -132,6 +136,10 @@ impl MatchResult {
     pub const fn revision(&self) -> MatchResultRevision {
         self.revision
     }
+
+    pub fn correction_reason(&self) -> Option<&str> {
+        self.correction_reason.as_deref()
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -158,6 +166,13 @@ pub enum MatchResultError {
     },
     MatchNotPublished,
     RoundNotActive,
+    ResultDoesNotBelongToMatch,
+    CorrectionReasonTooLong {
+        maximum: usize,
+    },
+    UnexpectedCorrectionReason,
+    CorrectionTimestampRequired,
+    MatchResultRevisionOverflow,
 }
 
 impl MatchResultError {
@@ -172,6 +187,11 @@ impl MatchResultError {
             }
             Self::MatchNotPublished => "match_not_published",
             Self::RoundNotActive => "round_not_active",
+            Self::ResultDoesNotBelongToMatch => "result_does_not_belong_to_match",
+            Self::CorrectionReasonTooLong { .. } => "correction_reason_too_long",
+            Self::UnexpectedCorrectionReason => "unexpected_correction_reason",
+            Self::CorrectionTimestampRequired => "correction_timestamp_required",
+            Self::MatchResultRevisionOverflow => "match_result_revision_overflow",
         }
     }
 }
@@ -210,6 +230,24 @@ impl Display for MatchResultError {
             ),
             Self::MatchNotPublished => formatter.write_str("match is not published"),
             Self::RoundNotActive => formatter.write_str("match is not in the active round"),
+            Self::ResultDoesNotBelongToMatch => {
+                formatter.write_str("the existing result belongs to another match")
+            }
+            Self::CorrectionReasonTooLong { maximum } => {
+                write!(
+                    formatter,
+                    "correction reason may contain at most {maximum} bytes"
+                )
+            }
+            Self::UnexpectedCorrectionReason => {
+                formatter.write_str("an initial result cannot contain a correction reason")
+            }
+            Self::CorrectionTimestampRequired => {
+                formatter.write_str("a corrected result requires a correction timestamp")
+            }
+            Self::MatchResultRevisionOverflow => {
+                formatter.write_str("match result revision exceeds its limit")
+            }
         }
     }
 }
@@ -324,11 +362,14 @@ pub fn restore_match_result(
     entered_at: SystemTime,
     corrected_at: Option<SystemTime>,
     revision: MatchResultRevision,
+    correction_reason: Option<String>,
 ) -> Result<MatchResult, MatchResultError> {
     let mut result =
         validate_and_complete_match_at(scheduled_match, match_format, games, entered_at)?;
+    validate_restored_audit_metadata(revision, corrected_at, correction_reason.as_deref())?;
     result.corrected_at = corrected_at;
     result.revision = revision;
+    result.correction_reason = correction_reason;
     Ok(result)
 }
 
@@ -351,13 +392,12 @@ pub(super) fn validate_and_complete_match_at(
         entered_at,
         corrected_at: None,
         revision: MatchResultRevision(1),
+        correction_reason: None,
     })
 }
 
 fn validate_scheduled_match(scheduled_match: &ScheduledMatch) -> Result<(), MatchResultError> {
-    if scheduled_match.publication_status != MatchPublicationStatus::Published {
-        return Err(MatchResultError::MatchNotPublished);
-    }
+    validate_published_match(scheduled_match)?;
 
     if scheduled_match.round_activity != RoundActivity::Active {
         return Err(MatchResultError::RoundNotActive);
@@ -366,7 +406,17 @@ fn validate_scheduled_match(scheduled_match: &ScheduledMatch) -> Result<(), Matc
     Ok(())
 }
 
-fn completed_winner_id(
+pub(super) fn validate_published_match(
+    scheduled_match: &ScheduledMatch,
+) -> Result<(), MatchResultError> {
+    if scheduled_match.publication_status == MatchPublicationStatus::Published {
+        Ok(())
+    } else {
+        Err(MatchResultError::MatchNotPublished)
+    }
+}
+
+pub(super) fn completed_winner_id(
     scheduled_match: &ScheduledMatch,
     progress: MatchProgress,
 ) -> Result<EntrantId, MatchResultError> {

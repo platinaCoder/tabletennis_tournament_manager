@@ -144,6 +144,7 @@ pub(super) async fn record_result(
             &MatchId::new(match_id),
             request.expected_revision,
             &games,
+            request.correction_reason.as_deref(),
         )
         .await?;
     Ok(Json(view(&stored, role)))

@@ -54,24 +54,6 @@ impl TournamentRepository {
             })
             .collect()
     }
-
-    pub async fn delete(
-        &self,
-        tournament_id: Uuid,
-        expected_revision: u64,
-    ) -> Result<(), TournamentRepositoryError> {
-        let expected_revision = i64::try_from(expected_revision)
-            .map_err(|_| invalid("tournament revision exceeds storage limit"))?;
-        let result = query::<Postgres>("DELETE FROM tournaments WHERE id = $1 AND revision = $2")
-            .bind(tournament_id)
-            .bind(expected_revision)
-            .execute(&self.pool)
-            .await?;
-        if result.rows_affected() == 0 {
-            return Err(TournamentRepositoryError::RevisionConflict);
-        }
-        Ok(())
-    }
 }
 
 pub(super) fn normalize_email(email: &str) -> String {

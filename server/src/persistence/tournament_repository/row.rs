@@ -111,6 +111,7 @@ pub(super) struct ResultRow {
     pub away_games_won: i32,
     pub entered_at: DateTime<Utc>,
     pub corrected_at: Option<DateTime<Utc>>,
+    pub correction_reason: Option<String>,
 }
 
 impl<'row> FromRow<'row, PgRow> for ResultRow {
@@ -121,6 +122,7 @@ impl<'row> FromRow<'row, PgRow> for ResultRow {
             away_games_won: row.try_get("away_games_won")?,
             entered_at: row.try_get("entered_at")?,
             corrected_at: row.try_get("corrected_at")?,
+            correction_reason: row.try_get("correction_reason")?,
         })
     }
 }

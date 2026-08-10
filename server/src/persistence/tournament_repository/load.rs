@@ -214,7 +214,7 @@ impl TournamentRepository {
     ) -> Result<MatchResult, TournamentRepositoryError> {
         let result_row = query_as::<sqlx_postgres::Postgres, ResultRow>(
             "SELECT winner_entrant_id, home_games_won, away_games_won,
-                    entered_at, corrected_at
+                    entered_at, corrected_at, correction_reason
              FROM match_result_revisions
              WHERE match_id = $1 AND revision = $2",
         )
@@ -261,6 +261,7 @@ impl TournamentRepository {
             SystemTime::from(result_row.entered_at),
             result_row.corrected_at.map(SystemTime::from),
             MatchResultRevision::try_from_value(revision_value).map_err(invalid)?,
+            result_row.correction_reason,
         )
         .map_err(invalid)?;
         if result.winner_id().as_str() != result_row.winner_entrant_id

@@ -1,4 +1,6 @@
+mod correction_controls;
 mod form_state;
+mod match_display;
 mod match_form;
 
 use std::collections::{HashMap, HashSet};
@@ -17,6 +19,7 @@ use match_form::MatchForm;
 pub struct SubmittedResult {
     pub match_id: MatchId,
     pub games: Vec<GameScore>,
+    pub expected_revision: u64,
 }
 
 #[derive(Properties, PartialEq)]
@@ -99,9 +102,12 @@ pub fn ResultEntry(props: &ResultEntryProps) -> Html {
                     let home = entrants.get(&scheduled.home_entrant_id).map(|entrant| (*entrant).clone());
                     let away = entrants.get(&scheduled.away_entrant_id).map(|entrant| (*entrant).clone());
                     let existing_result = results.get(&scheduled.match_id).map(|result| (*result).clone());
+                    let result_revision = existing_result
+                        .as_ref()
+                        .map_or(0, |result| result.revision().value());
                     html! {
                         <MatchForm
-                            key={scheduled.match_id.as_str().to_owned()}
+                            key={format!("{}-{result_revision}", scheduled.match_id.as_str())}
                             scheduled_match={scheduled.clone()}
                             {home}
                             {away}

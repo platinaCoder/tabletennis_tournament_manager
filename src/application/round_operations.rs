@@ -4,7 +4,10 @@ use crate::pairing::algorithms::{PairingPolicy, propose_pairings};
 use crate::pairing::{
     MatchPublication, TableAssignmentEntrant, assign_tables, publish_scheduled_matches,
 };
-use crate::results::{GameScore, MatchResult, RoundActivity, validate_and_complete_match};
+use crate::results::{
+    GameScore, MatchFormat, MatchResult, RoundActivity, validate_and_complete_match,
+    validate_and_correct_match,
+};
 
 use super::pairing_snapshot::build_pairing_request;
 use super::standings::calculate_standings;
@@ -130,6 +133,55 @@ impl TournamentApplication {
         Ok(result)
     }
 
+    pub fn correct_match_result(
+        &mut self,
+        match_id: &MatchId,
+        games: Vec<GameScore>,
+        correction_reason: Option<String>,
+    ) -> Result<MatchResult, TournamentApplicationError> {
+        let match_format = self.tournament.match_format();
+        if let Some(round) = &mut self.active_round
+            && round
+                .scheduled_matches
+                .iter()
+                .any(|scheduled| &scheduled.match_id == match_id)
+        {
+            return replace_result(
+                &round.scheduled_matches,
+                &mut round.results,
+                match_format,
+                match_id,
+                games,
+                correction_reason,
+            );
+        }
+
+        let mut completed_rounds = self.completed_rounds.clone();
+        let Some(round) = completed_rounds.iter_mut().find(|round| {
+            round
+                .scheduled_matches
+                .iter()
+                .any(|scheduled| &scheduled.match_id == match_id)
+        }) else {
+            return Err(TournamentApplicationError::UnknownMatch {
+                match_id: match_id.clone(),
+            });
+        };
+        let replacement = replace_result(
+            &round.scheduled_matches,
+            &mut round.results,
+            match_format,
+            match_id,
+            games,
+            correction_reason,
+        )?;
+        let standings = calculate_standings(&self.entrants, &completed_rounds)?;
+        self.completed_rounds = completed_rounds;
+        self.standings = standings;
+        self.pending_pairing = None;
+        Ok(replacement)
+    }
+
     pub fn complete_round(&mut self) -> Result<&CompletedRound, TournamentApplicationError> {
         let round = self
             .active_round
@@ -184,6 +236,32 @@ impl TournamentApplication {
             index + 1
         ))
     }
+}
+
+fn replace_result(
+    scheduled_matches: &[crate::scheduling::ScheduledMatch],
+    results: &mut [MatchResult],
+    match_format: MatchFormat,
+    match_id: &MatchId,
+    games: Vec<GameScore>,
+    correction_reason: Option<String>,
+) -> Result<MatchResult, TournamentApplicationError> {
+    let scheduled = scheduled_matches
+        .iter()
+        .find(|scheduled| &scheduled.match_id == match_id)
+        .ok_or_else(|| TournamentApplicationError::UnknownMatch {
+            match_id: match_id.clone(),
+        })?;
+    let result = results
+        .iter_mut()
+        .find(|result| result.match_id() == match_id)
+        .ok_or_else(|| TournamentApplicationError::ResultNotEntered {
+            match_id: match_id.clone(),
+        })?;
+    let replacement =
+        validate_and_correct_match(scheduled, match_format, result, games, correction_reason)?;
+    *result = replacement.clone();
+    Ok(replacement)
 }
 
 fn assign_released_table(round: &mut ActiveRound, table_number: crate::table::TableNumber) {

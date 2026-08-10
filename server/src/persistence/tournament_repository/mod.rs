@@ -1,4 +1,5 @@
 mod access;
+mod deletion;
 mod error;
 mod load;
 mod match_writer;

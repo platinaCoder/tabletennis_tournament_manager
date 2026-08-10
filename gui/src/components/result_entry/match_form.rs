@@ -2,16 +2,15 @@ use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
 use tabletennis_tournament::application::TournamentEntrant;
-use tabletennis_tournament::results::{
-    MatchFormat, MatchProgress, MatchProgressStatus, MatchResult, MatchSide,
-};
+use tabletennis_tournament::results::{MatchFormat, MatchProgress, MatchResult};
 use tabletennis_tournament::scheduling::ScheduledMatch;
 
-use crate::formatting::match_format;
-use crate::language::{Language, Text, use_language};
+use crate::language::{Text, use_language};
 
 use super::SubmittedResult;
-use super::form_state::{FormError, FormEvaluation, GameInput, evaluate_rows};
+use super::correction_controls::{cancel_correction, cancel_label, result_rows, save_label};
+use super::form_state::{GameInput, evaluate_rows};
+use super::match_display::{completed_match, match_header, progress_label, read_only_result_label};
 
 #[derive(Properties, PartialEq)]
 pub struct MatchFormProps {
@@ -28,21 +27,29 @@ pub struct MatchFormProps {
 #[component]
 pub fn MatchForm(props: &MatchFormProps) -> Html {
     let language = use_language();
-    let rows = use_state(|| vec![GameInput::default(); props.match_format.maximum_games()]);
+    let rows = use_state(|| result_rows(props.match_format, props.existing_result.as_ref()));
+    let correcting = use_state(|| false);
     let first_home_input = use_node_ref();
     {
         let first_home_input = first_home_input.clone();
-        let should_focus = props.autofocus
-            && props.existing_result.is_none()
-            && props.scheduled_match.table_number().is_some();
+        let should_focus = *correcting
+            || (props.autofocus
+                && props.existing_result.is_none()
+                && props.scheduled_match.table_number().is_some());
         use_effect_with(should_focus, move |should_focus| {
             if *should_focus && let Some(input) = first_home_input.cast::<HtmlInputElement>() {
                 let _ = input.focus();
             }
         });
     }
-    if let Some(result) = &props.existing_result {
-        return completed_match(props, result, language);
+    if let Some(result) = &props.existing_result
+        && !*correcting
+    {
+        let begin_correction = {
+            let correcting = correcting.clone();
+            Callback::from(move |_| correcting.set(true))
+        };
+        return completed_match(props, result, language, begin_correction);
     }
     if !props.can_edit {
         return html! {
@@ -63,6 +70,10 @@ pub fn MatchForm(props: &MatchFormProps) -> Html {
 
     let evaluation = evaluate_rows(props.match_format, &rows);
     let is_complete = evaluation.progress.is_some_and(MatchProgress::is_complete);
+    let expected_revision = props
+        .existing_result
+        .as_ref()
+        .map_or(0, |result| u64::from(result.revision().value()));
     let onsubmit = {
         let on_submit = props.on_submit.clone();
         let match_id = props.scheduled_match.match_id.clone();
@@ -73,6 +84,7 @@ pub fn MatchForm(props: &MatchFormProps) -> Html {
                 on_submit.emit(SubmittedResult {
                     match_id: match_id.clone(),
                     games: games.clone(),
+                    expected_revision,
                 });
             }
         })
@@ -115,7 +127,27 @@ pub fn MatchForm(props: &MatchFormProps) -> Html {
                 })}
                 <div class="match-progress">
                     {progress_label(&evaluation, props, language)}
-                    <button class="primary compact" type="submit" disabled={!is_complete}>{language.text(Text::SaveResult)}</button>
+                    <div class="button-row">
+                        if props.existing_result.is_some() {
+                            <button
+                                class="secondary compact"
+                                type="button"
+                                onclick={cancel_correction(
+                                    correcting.clone(),
+                                    rows.clone(),
+                                    props.match_format,
+                                    props.existing_result.clone(),
+                                )}
+                            >{cancel_label(language)}</button>
+                        }
+                        <button class="primary compact" type="submit" disabled={!is_complete}>
+                            {if props.existing_result.is_some() {
+                                save_label(language)
+                            } else {
+                                language.text(Text::SaveResult)
+                            }}
+                        </button>
+                    </div>
                 </div>
             </form>
         </article>
@@ -139,98 +171,4 @@ fn update_score(
         }
         rows.set(replacement);
     })
-}
-
-fn progress_label(evaluation: &FormEvaluation, props: &MatchFormProps, language: Language) -> Html {
-    if let Some(error) = &evaluation.error {
-        return html! { <span class="error-text">{form_error_label(error, language)}</span> };
-    }
-    match evaluation.progress.map(MatchProgress::status) {
-        Some(MatchProgressStatus::Complete { winner }) => {
-            let winner_name = match winner {
-                MatchSide::Home => props.home.as_ref().map(|entrant| entrant.name.as_str()),
-                MatchSide::Away => props.away.as_ref().map(|entrant| entrant.name.as_str()),
-            }
-            .unwrap_or(language.text(Text::UnknownContestant));
-            html! {
-                <strong class="success-text">{language.complete_winner(winner_name)}</strong>
-            }
-        }
-        Some(_) => html! { <span class="muted">{language.text(Text::EnterRemainingGames)}</span> },
-        None => Html::default(),
-    }
-}
-
-fn completed_match(props: &MatchFormProps, result: &MatchResult, language: Language) -> Html {
-    let scores = result
-        .games()
-        .iter()
-        .map(|game| format!("{}-{}", game.home_points.value(), game.away_points.value()))
-        .collect::<Vec<_>>()
-        .join(", ");
-    let winner_name = if result.winner_id() == &props.scheduled_match.home_entrant_id {
-        props.home.as_ref().map(|entrant| entrant.name.as_str())
-    } else if result.winner_id() == &props.scheduled_match.away_entrant_id {
-        props.away.as_ref().map(|entrant| entrant.name.as_str())
-    } else {
-        None
-    }
-    .unwrap_or(language.text(Text::UnknownContestant));
-    html! {
-        <article class="match-card complete-card">
-            {match_header(props, language)}
-            <div class="completed-score">
-                <strong>{format!("{}-{}", result.home_games_won().value(), result.away_games_won().value())}</strong>
-                <span>{scores}</span>
-                <small>{language.winner(winner_name)}</small>
-            </div>
-        </article>
-    }
-}
-
-fn match_header(props: &MatchFormProps, language: Language) -> Html {
-    let table = props.scheduled_match.table_number().map_or_else(
-        || language.text(Text::WaitingForTable).to_owned(),
-        |table| language.table(table.value()),
-    );
-    html! {
-        <header class="match-header">
-            <span class="table-badge">{table}</span>
-            <div>
-                {entrant_line(props.home.as_ref(), language.text(Text::Home), language)}
-                {entrant_line(props.away.as_ref(), language.text(Text::Away), language)}
-            </div>
-            <small>{match_format(props.match_format, language)}</small>
-        </header>
-    }
-}
-
-fn entrant_line(entrant: Option<&TournamentEntrant>, side: &str, language: Language) -> Html {
-    html! {
-        <div class="match-entrant">
-            <span>{side}</span>
-            <strong>{entrant.map_or(language.text(Text::UnknownContestant), |entrant| entrant.name.as_str())}</strong>
-            <small>
-                {entrant.map_or(language.text(Text::UnknownClub), |entrant| entrant.club_name.as_str())}
-                {entrant.map_or_else(|| format!(" · {}", language.text(Text::EloUnavailable)), |entrant| format!(" · ELO {}", entrant.starting_elo.value()))}
-            </small>
-        </div>
-    }
-}
-
-fn form_error_label(error: &FormError, language: Language) -> String {
-    match error {
-        FormError::BlankRows => language.sequential_games_error().to_owned(),
-        FormError::WholeNumbers => language.whole_points_error().to_owned(),
-        FormError::GameNumberLimit => language.game_number_limit_error().to_owned(),
-        FormError::InvalidGameNumber => language.invalid_game_number_error().to_owned(),
-        FormError::MatchResult(error) => language.match_result_error(error),
-    }
-}
-
-const fn read_only_result_label(language: Language) -> &'static str {
-    match language {
-        Language::English => "Waiting for an editor to enter this result.",
-        Language::Dutch => "Wachten tot een bewerker deze uitslag invoert.",
-    }
 }

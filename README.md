@@ -156,14 +156,23 @@ decline it at the top of the dashboard. Invitations also appear on the first
 login of an account that did not exist when it was invited. The application
 does not send invitation email in this version.
 
-Deleting a tournament is owner-only, revision-checked and permanent. PostgreSQL
-foreign-key cascades remove its memberships, invitations, entrants, rounds,
-matches, result revisions and game scores in the same database operation.
+Deleting a tournament is owner-only, revision-checked and permanent. One
+database transaction removes result revisions, game scores, matches, rounds,
+entrants, memberships, invitations and the tournament in dependency order.
 
 Tournament mutations retain aggregate optimistic concurrency. Match-result
 entry additionally uses each match's revision. Concurrent results for different
 matches are retried against fresh authoritative state, while concurrent edits
 to the same match return `result_revision_conflict` instead of overwriting data.
+
+Saved results can be corrected from the active round's result-entry card. A
+correction resubmits every individual game, requires the current match revision,
+and is revalidated by the results domain. PostgreSQL appends the
+replacement as a new `match_result_revisions` row with its own revision-keyed
+`game_scores`; previous scores are never overwritten or deleted. Winner changes
+recalculate standings and invalidate unpublished pairing previews, but never
+rewrite already-published pairings. This uses the existing schema and requires
+no additional database migration.
 
 The dashboard API routes are:
 

@@ -108,6 +108,7 @@ pub(crate) async fn simulate_remaining_results(
                 ),
             )
             .map_err(|error| error.to_string())?,
+            expected_revision: 0,
         };
         view = crate::api_client::record_result(
             tournament_id,
@@ -120,7 +121,7 @@ pub(crate) async fn simulate_remaining_results(
 
 pub(crate) fn result_request(submission: &SubmittedResult) -> RecordMatchResultRequest {
     RecordMatchResultRequest {
-        expected_revision: 0,
+        expected_revision: submission.expected_revision,
         games: submission
             .games
             .iter()
@@ -130,5 +131,26 @@ pub(crate) fn result_request(submission: &SubmittedResult) -> RecordMatchResultR
                 away_points: i64::from(game.away_points.value()),
             })
             .collect(),
+        correction_reason: None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use tabletennis_tournament::identity::MatchId;
+    use tabletennis_tournament::results::GameScore;
+
+    use super::*;
+
+    #[test]
+    fn correction_request_preserves_match_revision() {
+        let request = result_request(&SubmittedResult {
+            match_id: MatchId::new("match"),
+            games: vec![GameScore::new(1, 11, 7).unwrap()],
+            expected_revision: 2,
+        });
+
+        assert_eq!(request.expected_revision, 2);
+        assert_eq!(request.correction_reason, None);
     }
 }

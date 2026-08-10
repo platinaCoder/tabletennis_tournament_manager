@@ -20,6 +20,7 @@ pub enum TournamentApplicationError {
     InvalidRoundHistory { match_id: MatchId },
     UnknownEntrantInRound { entrant_id: EntrantId },
     ResultAlreadyEntered { match_id: MatchId },
+    ResultNotEntered { match_id: MatchId },
     RoundIncomplete { missing_result_count: usize },
     MaximumRoundsCompleted { maximum_round_count: u16 },
     RoundNumberOverflow,
@@ -74,6 +75,13 @@ impl Display for TournamentApplicationError {
                 write!(
                     formatter,
                     "match {} already has a result",
+                    match_id.as_str()
+                )
+            }
+            Self::ResultNotEntered { match_id } => {
+                write!(
+                    formatter,
+                    "match {} has no result to correct",
                     match_id.as_str()
                 )
             }

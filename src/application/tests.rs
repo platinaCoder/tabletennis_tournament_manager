@@ -445,3 +445,97 @@ fn completed_one_round(match_format: MatchFormat, games: Vec<GameScore>) -> Tour
     application.complete_round().unwrap();
     application
 }
+
+#[test]
+fn correcting_active_result_replaces_it_with_an_audited_revision() {
+    let mut application = application(MatchFormat::BestOfThree, 4);
+    application.start_tournament().unwrap();
+    application
+        .calculate_pairings(BlossomV1Policy::default())
+        .unwrap();
+    let match_id = application.publish_pairings().unwrap().scheduled_matches[0]
+        .match_id
+        .clone();
+    application
+        .enter_match_result(&match_id, two_zero())
+        .unwrap();
+
+    let corrected = application
+        .correct_match_result(&match_id, two_one(), None)
+        .unwrap();
+
+    assert_eq!(corrected.revision().value(), 2);
+    assert_eq!(corrected.correction_reason(), None);
+    assert_eq!(
+        application.match_result(&match_id).unwrap().games(),
+        two_one()
+    );
+}
+
+#[test]
+fn historical_winner_correction_recalculates_standings_and_discards_preview() {
+    let mut application = completed_one_round(MatchFormat::BestOfThree, two_zero());
+    let scheduled = application.completed_rounds()[0].scheduled_matches[0].clone();
+    let home_wins_before = application
+        .standings()
+        .iter()
+        .find(|standing| standing.entrant_id == scheduled.home_entrant_id)
+        .unwrap()
+        .matches_won;
+    application
+        .calculate_pairings(BlossomV1Policy::default())
+        .unwrap();
+
+    let corrected = application
+        .correct_match_result(
+            &scheduled.match_id,
+            vec![
+                GameScore::new(1, 4, 11).unwrap(),
+                GameScore::new(2, 8, 11).unwrap(),
+            ],
+            Some("Winner was reversed".to_owned()),
+        )
+        .unwrap();
+
+    let home_wins_after = application
+        .standings()
+        .iter()
+        .find(|standing| standing.entrant_id == scheduled.home_entrant_id)
+        .unwrap()
+        .matches_won;
+    assert_eq!(corrected.winner_id(), &scheduled.away_entrant_id);
+    assert_eq!(home_wins_before, home_wins_after + 1);
+    assert!(application.pending_pairing().is_none());
+}
+
+#[test]
+fn point_only_correction_preserves_performance_score() {
+    let mut application = completed_one_round(MatchFormat::BestOfThree, two_zero());
+    let scheduled = application.completed_rounds()[0].scheduled_matches[0].clone();
+    let before = application
+        .standings()
+        .iter()
+        .find(|standing| standing.entrant_id == scheduled.home_entrant_id)
+        .unwrap()
+        .clone();
+
+    application
+        .correct_match_result(
+            &scheduled.match_id,
+            vec![
+                GameScore::new(1, 11, 9).unwrap(),
+                GameScore::new(2, 12, 10).unwrap(),
+            ],
+            None,
+        )
+        .unwrap();
+
+    let after = application
+        .standings()
+        .iter()
+        .find(|standing| standing.entrant_id == scheduled.home_entrant_id)
+        .unwrap();
+    assert_eq!(after.performance_score, before.performance_score);
+    assert_eq!(after.matches_won, before.matches_won);
+    assert_ne!(after.points_won, before.points_won);
+}

@@ -85,7 +85,7 @@ async fn insert_result_revision(
             match_id, tournament_id, revision, winner_entrant_id,
             home_games_won, away_games_won, entered_at, corrected_at,
             correction_reason
-         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULL)",
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
     )
     .bind(match_id)
     .bind(tournament_id)
@@ -95,6 +95,7 @@ async fn insert_result_revision(
     .bind(i32::from(result.away_games_won().value()))
     .bind(entered_at)
     .bind(corrected_at)
+    .bind(result.correction_reason())
     .execute(&mut **transaction)
     .await?;
     for game in result.games() {

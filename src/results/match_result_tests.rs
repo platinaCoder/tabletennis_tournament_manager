@@ -1,5 +1,6 @@
 use std::time::SystemTime;
 
+use super::match_correction::validate_and_correct_match_at;
 use super::match_result::validate_and_complete_match_at;
 use super::*;
 
@@ -298,5 +299,95 @@ fn new_result_has_initial_audit_metadata() {
     assert_eq!(result.entered_at(), entered_at);
     assert_eq!(result.corrected_at(), None);
     assert_eq!(result.revision().value(), 1);
+    assert_eq!(result.correction_reason(), None);
     assert_eq!(result.games().len(), 2);
+}
+
+#[test]
+fn correction_derives_a_new_revision_and_preserves_original_entry_time() {
+    let entered_at = SystemTime::UNIX_EPOCH;
+    let corrected_at = entered_at + std::time::Duration::from_secs(60);
+    let original = validate_and_complete_match_at(
+        &scheduled_match(),
+        MatchFormat::BestOfThree,
+        vec![game(1, 11, 5), game(2, 11, 7)],
+        entered_at,
+    )
+    .unwrap();
+
+    let corrected = validate_and_correct_match_at(
+        &scheduled_match(),
+        MatchFormat::BestOfThree,
+        &original,
+        vec![game(1, 5, 11), game(2, 7, 11)],
+        Some("  Scores entered on the wrong sides  ".to_owned()),
+        corrected_at,
+    )
+    .unwrap();
+
+    assert_eq!(corrected.winner_id(), &EntrantId::new("away"));
+    assert_eq!(corrected.entered_at(), entered_at);
+    assert_eq!(corrected.corrected_at(), Some(corrected_at));
+    assert_eq!(corrected.revision().value(), 2);
+    assert_eq!(
+        corrected.correction_reason(),
+        Some("Scores entered on the wrong sides")
+    );
+}
+
+#[test]
+fn correction_without_a_reason_still_revalidates_replacement_games() {
+    let original = complete(
+        MatchFormat::BestOfThree,
+        vec![game(1, 11, 5), game(2, 11, 7)],
+    )
+    .unwrap();
+
+    let corrected = validate_and_correct_match(
+        &scheduled_match(),
+        MatchFormat::BestOfThree,
+        &original,
+        vec![game(1, 5, 11), game(2, 7, 11)],
+        None,
+    )
+    .unwrap();
+    assert_eq!(corrected.correction_reason(), None);
+    assert!(matches!(
+        validate_and_correct_match(
+            &scheduled_match(),
+            MatchFormat::BestOfThree,
+            &original,
+            vec![game(1, 11, 10), game(2, 11, 7)],
+            None,
+        ),
+        Err(MatchResultError::InvalidGameScore { .. })
+    ));
+}
+
+#[test]
+fn explicit_correction_allows_a_published_historical_match() {
+    let active = scheduled_match();
+    let original = complete(
+        MatchFormat::BestOfThree,
+        vec![game(1, 11, 5), game(2, 11, 7)],
+    )
+    .unwrap();
+    let historical = ScheduledMatch::published(
+        active.match_id.clone(),
+        active.home_entrant_id.clone(),
+        active.away_entrant_id.clone(),
+        active.table_number(),
+        RoundActivity::Inactive,
+    );
+
+    assert!(
+        validate_and_correct_match(
+            &historical,
+            MatchFormat::BestOfThree,
+            &original,
+            vec![game(1, 5, 11), game(2, 7, 11)],
+            None,
+        )
+        .is_ok()
+    );
 }

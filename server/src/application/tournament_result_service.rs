@@ -21,26 +21,38 @@ impl TournamentService {
         match_id: &MatchId,
         expected_match_revision: u64,
         games: &[GameScore],
+        correction_reason: Option<&str>,
     ) -> Result<(StoredTournament, TournamentAccessRole), ApiError> {
         for _ in 0..RESULT_SAVE_ATTEMPTS {
             let (mut stored, role) = self.load_for_edit(user_id, tournament_id).await?;
             let current_revision = stored
                 .application
-                .active_round()
-                .and_then(|round| {
-                    round
-                        .results
-                        .iter()
-                        .find(|result| result.match_id() == match_id)
-                })
+                .match_result(match_id)
                 .map_or(0, |result| u64::from(result.revision().value()));
             if current_revision != expected_match_revision {
                 return Err(ApiError::ResultRevisionConflict);
             }
-            stored
-                .application
-                .enter_match_result(match_id, games.to_vec())
-                .map_err(domain_error)?;
+            if current_revision == 0 {
+                if correction_reason.is_some() {
+                    return Err(ApiError::invalid(
+                        "unexpected_correction_reason",
+                        "An initial result cannot contain a correction reason.",
+                    ));
+                }
+                stored
+                    .application
+                    .enter_match_result(match_id, games.to_vec())
+                    .map_err(domain_error)?;
+            } else {
+                stored
+                    .application
+                    .correct_match_result(
+                        match_id,
+                        games.to_vec(),
+                        correction_reason.map(str::to_owned),
+                    )
+                    .map_err(domain_error)?;
+            }
             match self
                 .repository
                 .save(&stored, stored.revision, Utc::now())
@@ -147,8 +159,9 @@ mod postgres_tests {
             GameScore::new(1, 7, 11).unwrap(),
             GameScore::new(2, 8, 11).unwrap(),
         ];
-        let first = service.record_result(user_id, stored.id, &match_ids[0], 0, &first_games);
-        let second = service.record_result(user_id, stored.id, &match_ids[1], 0, &second_games);
+        let first = service.record_result(user_id, stored.id, &match_ids[0], 0, &first_games, None);
+        let second =
+            service.record_result(user_id, stored.id, &match_ids[1], 0, &second_games, None);
         let (first_result, second_result) = tokio::join!(first, second);
         first_result.unwrap();
         second_result.unwrap();
@@ -156,6 +169,47 @@ mod postgres_tests {
         let loaded = repository.load(stored.id).await.unwrap().unwrap();
         assert_eq!(loaded.application.active_round().unwrap().results.len(), 2);
         assert_eq!(loaded.revision, 3);
+
+        service
+            .record_result(
+                user_id,
+                stored.id,
+                &match_ids[0],
+                1,
+                &second_games,
+                Some("Scores were entered on the wrong sides"),
+            )
+            .await
+            .unwrap();
+        let stale_correction = service
+            .record_result(
+                user_id,
+                stored.id,
+                &match_ids[0],
+                1,
+                &first_games,
+                Some("Stale correction"),
+            )
+            .await;
+        assert!(matches!(
+            stale_correction,
+            Err(ApiError::ResultRevisionConflict)
+        ));
+        let corrected = repository.load(stored.id).await.unwrap().unwrap();
+        let result = corrected.application.match_result(&match_ids[0]).unwrap();
+        assert_eq!(result.revision().value(), 2);
+        assert_eq!(
+            result.winner_id(),
+            &corrected
+                .application
+                .active_round()
+                .unwrap()
+                .scheduled_matches
+                .iter()
+                .find(|scheduled| scheduled.match_id == match_ids[0])
+                .unwrap()
+                .away_entrant_id
+        );
 
         query::<sqlx_postgres::Postgres>("DELETE FROM tournaments WHERE id = $1")
             .bind(stored.id)

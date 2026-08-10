@@ -165,6 +165,8 @@ pub struct GameScoreInput {
 pub struct RecordMatchResultRequest {
     pub expected_revision: u64,
     pub games: Vec<GameScoreInput>,
+    #[serde(default)]
+    pub correction_reason: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
